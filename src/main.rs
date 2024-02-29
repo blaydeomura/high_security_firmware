@@ -14,6 +14,21 @@ use ::rand::rngs::OsRng;
 use aes_gcm::Nonce; 
 use ::rand::Rng; 
 
+//*-----------------------------------Notes--------------------------------------------------------*/
+// Command line tool for managing a wallet of encrypted key pairs.
+// Provides functionality for generating, accessing, and removing key pairs.
+// Keys are encrypted using AES-GCM encryption with a user provided key
+//
+// Wallet.json contains hashmap<Name, Path to key>
+// Keys: keys is a directory that has pk8 file of encrypted keys
+// --------------------------------------------------------------------------------------------------
+
+//*-----------------------------------TODO--------------------------------------------------------*/
+// - add in more command line options 
+// - Not input encryption key in command line
+// - more secure way to store keys?
+// --------------------------------------------------------------------------------------------------
+
 
 //***********Example Usages**************************************************************************/
 // 1. Generate a key for a person with a specific encryption key (has to be 32 bit)
@@ -31,6 +46,8 @@ use ::rand::Rng;
 //*****************************************************************************************************/
 
 
+// Struct for wallet: stores keys mapped to names
+// HashMap: Key = Key of person (String), Value = Path where key is stored (String)
 #[derive(Serialize, Deserialize, Debug)]
 struct Wallet {
     keys: HashMap<String, String>, // Maps a name to a path where the key is stored
@@ -43,12 +60,14 @@ impl Wallet {
         Self::load_from_file("wallet.json").unwrap_or_else(|_| Wallet { keys: HashMap::new() })
     }
 
+    // persitence
     fn save_to_file(&self, filepath: &str) -> std::io::Result<()> {
         let serialized = serde_json::to_string(&self)?;
         fs::write(filepath, serialized)?;
         Ok(())
     }
 
+    // load wallet if exists
     fn load_from_file(filepath: &str) -> std::io::Result<Self> {
         let mut file = File::open(filepath)?;
         let mut contents = String::new();
@@ -72,6 +91,7 @@ impl Wallet {
 }
 
 
+// command line arguments
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -79,6 +99,7 @@ struct Args {
     command: Commands,
 }
 
+// the possible command line arguments
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Generates a new key pair for a given name and encryption key
@@ -131,12 +152,13 @@ fn main() {
     }
 }
 
-
+// Format our path
 fn key_file_path(name: &str) -> String {
     format!("keys/{}.pk8", name)
 }
 
-
+// generate key pair for a person
+// name and encryption key and saves to file
 fn generate_key(wallet: &mut Wallet, name: &str, encryption_key: &[u8]) {
     let path_str = key_file_path(name);
     let path = Path::new(&path_str);
@@ -156,7 +178,7 @@ fn generate_key(wallet: &mut Wallet, name: &str, encryption_key: &[u8]) {
     }
 }
 
-
+// generates key pair and encrypts it
 fn generate_and_save_key_pair(path: &Path, encryption_key: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     let rng = ring::rand::SystemRandom::new();
     let pkcs8_bytes_result = Ed25519KeyPair::generate_pkcs8(&rng);
@@ -175,7 +197,7 @@ fn generate_and_save_key_pair(path: &Path, encryption_key: &[u8]) -> Result<(), 
     Ok(())
 }
 
-
+// remove key from persistent storage if needed
 fn remove_key(wallet: &mut Wallet, name: &str) {
     if let Some(path) = wallet.remove_key(name) {
         fs::remove_file(path).expect("Failed to remove key file");
@@ -185,6 +207,7 @@ fn remove_key(wallet: &mut Wallet, name: &str) {
     }
 }
 
+// access key from persitent wallet
 fn access_key(wallet: &Wallet, name: &str, encryption_key: &[u8]) {
     if let Some(path_str) = wallet.get_key_path(name) {
         let path = Path::new(path_str);
@@ -204,6 +227,8 @@ fn access_key(wallet: &Wallet, name: &str, encryption_key: &[u8]) {
 }
 
 
+// Encrypts data with AES-GCM library with a provided key
+// NEEDS UPDATE TO MORE SECURE
 fn encrypt_data(data: &[u8], key: &[u8]) -> Vec<u8> {
     let cipher = Aes256Gcm::new(GenericArray::from_slice(key));
     
@@ -218,7 +243,7 @@ fn encrypt_data(data: &[u8], key: &[u8]) -> Vec<u8> {
     [nonce.as_slice(), encrypted_data.as_slice()].concat()
 }
 
-
+// Decryption
 fn decrypt_data(encrypted_data: &[u8], key: &[u8]) -> Vec<u8> {
     let cipher = Aes256Gcm::new(GenericArray::from_slice(key));
     let (nonce, ciphertext) = encrypted_data.split_at(12);
