@@ -14,3 +14,10 @@ ring = "=0.17.8"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 anyhow = "1.0"
+openssl = "0.10.34"
+blake3 = "0.3"           #For Blake3 hashing
+sha2 = "0.9.7"           # For SHA-256 and SHA-512 hashing
+md5 = "0.7.0"            # For MD5 hashing
+blake2b_simd = "1.0.2"   # For BLAKE2b hashing
+blake2s_simd = "1.0.2"  # For BLAKE2s hashing
+bcrypt = "0.11.0"        # For bcrypt hashing

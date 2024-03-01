@@ -1,9 +1,15 @@
-use clap::{Parser, Subcommand};
+use clap::{App, Arg};            
+use std::io::Read;                
+use std::fs::File;                
+use std::path::Path;              
+use blake3::Hasher;                
+use sha2::{Digest, Sha256, Sha384, Sha512};   
+use md5;                          
+use blake2b_simd::Params as Blake2bParams; 
+use blake2s_simd::Params as Blake2sParams; 
+use bcrypt;                        
 use ring::signature::Ed25519KeyPair;
 use std::collections::HashMap;
-use std::fs::{self, File};
-use std::io::Read;
-use std::path::Path;
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use aes_gcm::Aes256Gcm; 
@@ -45,6 +51,9 @@ use ::rand::Rng;
 //cargo run -- remove --name Bob 
 //*****************************************************************************************************/
 
+
+// Struct for wallet: stores keys mapped to names
+// HashMap: Key = Key of person (String), Value = Path where key is stored (String)
 
 // Struct for wallet: stores keys mapped to names
 // HashMap: Key = Key of person (String), Value = Path where key is stored (String)
@@ -90,7 +99,6 @@ impl Wallet {
     }
 }
 
-
 // command line arguments
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -128,8 +136,12 @@ enum Commands {
         #[arg(short, long)]
         encryption_key: String,
     },
-}
 
+    HashFile {
+        #[arg(short, long)]
+        filename: String,
+    },
+}
 
 fn main() {
     let args = Args::parse();
@@ -149,7 +161,48 @@ fn main() {
             let encryption_key_bytes = encryption_key.as_bytes();
             access_key(&wallet, &name, encryption_key_bytes);
         },
+        Commands::HashFile { filename } => {
+            hash_file(&filename);
+        }
     }
+}
+
+fn hash_file(filename: &str) {
+    let path = Path::new(filename);
+    let mut file = match File::open(&path) {
+        Err(why) => {
+            eprintln!("Error: Couldn't open {}: {}", path.display(), why);
+            std::process::exit(1);
+        }
+        Ok(file) => file,
+    };
+
+    let mut buffer = Vec::new();
+    if let Err(why) = file.read_to_end(&mut buffer) {
+        eprintln!("Error: Couldn't read {}: {}", path.display(), why);
+        std::process::exit(1);
+    }
+
+    let mut hasher_blake3 = Hasher::new();
+    hasher_blake3.update(&buffer);
+    let hash_blake3 = hasher_blake3.finalize();
+
+    let hash_sha256 = Sha256::digest(&buffer);
+    let hash_sha384 = Sha384::digest(&buffer);
+    let hash_sha512 = Sha512::digest(&buffer);
+    let hash_md5 = md5::compute(&buffer);
+    let hash_blake2b = Blake2bParams::new().hash_length(64).hash(&buffer);
+    let bcrypt_hash = bcrypt::hash(&buffer, bcrypt::DEFAULT_COST).unwrap();
+    let hash_blake2s = Blake2sParams::new().hash_length(32).hash(&buffer);
+
+    println!("BLAKE3 Hash:\n  {:?}\n", hash_blake3);
+    println!("SHA-256 Hash:\n {:?}\n", hash_sha256);
+    println!("SHA-384 Hash:\n {:?}\n", hash_sha384);
+    println!("SHA-512 Hash:\n {:?}\n", hash_sha512);
+    println!("MD5 Hash:\n {:?}\n", hash_md5);
+    println!("BLAKE2b Hash:\n {:?}\n", hash_blake2b);
+    println!("Bcrypt Hash:\n {}\n", bcrypt_hash);
+    println!("BLAKE2s Hash:\n {:?}\n", hash_blake2s);
 }
 
 // Format our path
@@ -226,14 +279,13 @@ fn access_key(wallet: &Wallet, name: &str, encryption_key: &[u8]) {
     }
 }
 
-
 // Encrypts data with AES-GCM library with a provided key
 // NEEDS UPDATE TO MORE SECURE
 fn encrypt_data(data: &[u8], key: &[u8]) -> Vec<u8> {
     let cipher = Aes256Gcm::new(GenericArray::from_slice(key));
-    
+
     // Create the nonce and store it in a variable to extend its lifetime
-    let nonce_array = OsRng.gen::<[u8; 12]>(); // Generate a random nonce
+    let nonce_array = OsRng.gen::<[u8; 12]>();  // Generate a random nonce
     let nonce = Nonce::from_slice(&nonce_array); // Convert the array into a Nonce type
     
     let encrypted_data = cipher.encrypt(nonce, data.as_ref())
