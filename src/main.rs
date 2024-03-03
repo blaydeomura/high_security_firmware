@@ -1,13 +1,7 @@
-use clap::{App, Arg};            
 use std::io::Read;                
 use std::fs::File;                
-use std::path::Path;              
-use blake3::Hasher;                
-use sha2::{Digest, Sha256, Sha384, Sha512};   
-use md5;                          
-use blake2b_simd::Params as Blake2bParams; 
-use blake2s_simd::Params as Blake2sParams; 
-use bcrypt;                        
+use std::path::Path;                         
+use sha2::{Digest, Sha256, Sha384, Sha512};                       
 use ring::signature::Ed25519KeyPair;
 use std::collections::HashMap;
 use base64::{Engine as _, engine::general_purpose};
@@ -19,41 +13,9 @@ use aes_gcm::KeyInit;
 use ::rand::rngs::OsRng;
 use aes_gcm::Nonce; 
 use ::rand::Rng; 
+use clap::{Subcommand, Parser};
+use std::fs;
 
-//*-----------------------------------Notes--------------------------------------------------------*/
-// Command line tool for managing a wallet of encrypted key pairs.
-// Provides functionality for generating, accessing, and removing key pairs.
-// Keys are encrypted using AES-GCM encryption with a user provided key
-//
-// Wallet.json contains hashmap<Name, Path to key>
-// Keys: keys is a directory that has pk8 file of encrypted keys
-// --------------------------------------------------------------------------------------------------
-
-//*-----------------------------------TODO--------------------------------------------------------*/
-// - add in more command line options 
-// - Not input encryption key in command line
-// - more secure way to store keys?
-// --------------------------------------------------------------------------------------------------
-
-
-//***********Example Usages**************************************************************************/
-// 1. Generate a key for a person with a specific encryption key (has to be 32 bit)
-        // This will need to be more secure later
-// 2. Access person's generated key with same encryption key
-// 3. You can remove without key
-
-//cargo run -- generate --name Mallory --encryption-key "ThisIsA32ByteLongEncryptionKey00"
-//cargo run -- access --name Mallory --encryption-key "ThisIsA32ByteLongEncryptionKey00"
-//cargo run -- remove --name Mallory 
-
-// cargo run -- generate --name Bob --encryption-key "ThisIsA32ByteLongEncryptionKey11"
-//cargo run -- access --name Bob --encryption-key "ThisIsA32ByteLongEncryptionKey11"
-//cargo run -- remove --name Bob 
-//*****************************************************************************************************/
-
-
-// Struct for wallet: stores keys mapped to names
-// HashMap: Key = Key of person (String), Value = Path where key is stored (String)
 
 // Struct for wallet: stores keys mapped to names
 // HashMap: Key = Key of person (String), Value = Path where key is stored (String)
@@ -138,8 +100,13 @@ enum Commands {
     },
 
     HashFile {
+        // Name of the file to be hashed
         #[arg(short, long)]
         filename: String,
+
+        /// The hashing algorithm to use (e.g., blake3, sha256)
+        #[arg(short, long)]
+        algorithm: String,
     },
 }
 
@@ -161,49 +128,51 @@ fn main() {
             let encryption_key_bytes = encryption_key.as_bytes();
             access_key(&wallet, &name, encryption_key_bytes);
         },
-        Commands::HashFile { filename } => {
-            hash_file(&filename);
+        // Commands::HashFile { filename } => {
+        //     hash_file(&filename);
+        // }
+        Commands::HashFile { filename, algorithm } => {
+            hash_file(&filename, &algorithm);
         }
     }
 }
 
-fn hash_file(filename: &str) {
+
+fn hash_file(filename: &str, algorithm: &str) {
     let path = Path::new(filename);
     let mut file = match File::open(&path) {
-        Err(why) => {
-            eprintln!("Error: Couldn't open {}: {}", path.display(), why);
-            std::process::exit(1);
-        }
+        Err(why) => panic!("Couldn't open {}: {}", path.display(), why),
         Ok(file) => file,
     };
 
     let mut buffer = Vec::new();
-    if let Err(why) = file.read_to_end(&mut buffer) {
-        eprintln!("Error: Couldn't read {}: {}", path.display(), why);
-        std::process::exit(1);
+    file.read_to_end(&mut buffer).expect("Couldn't read file");
+
+    match algorithm.to_lowercase().as_str() {
+        "blake3" => {
+            let hash = blake3::hash(&buffer);
+            println!("BLAKE3 Hash: {:?}", hash);
+        },
+        "sha256" => {
+            let hash = Sha256::digest(&buffer);
+            println!("SHA-256 Hash: {:x}", hash);
+        },
+        "sha384" => {
+            let hash = Sha384::digest(&buffer);
+            println!("SHA-384 Hash: {:x}", hash);
+        },
+        "sha512" => {
+            let hash = Sha512::digest(&buffer);
+            println!("SHA-512 Hash: {:x}", hash);
+        },
+        // Add other algorithms here...
+        _ => println!("Unsupported algorithm. Please specify a valid algorithm."),
     }
-
-    let mut hasher_blake3 = Hasher::new();
-    hasher_blake3.update(&buffer);
-    let hash_blake3 = hasher_blake3.finalize();
-
-    let hash_sha256 = Sha256::digest(&buffer);
-    let hash_sha384 = Sha384::digest(&buffer);
-    let hash_sha512 = Sha512::digest(&buffer);
-    let hash_md5 = md5::compute(&buffer);
-    let hash_blake2b = Blake2bParams::new().hash_length(64).hash(&buffer);
-    let bcrypt_hash = bcrypt::hash(&buffer, bcrypt::DEFAULT_COST).unwrap();
-    let hash_blake2s = Blake2sParams::new().hash_length(32).hash(&buffer);
-
-    println!("BLAKE3 Hash:\n  {:?}\n", hash_blake3);
-    println!("SHA-256 Hash:\n {:?}\n", hash_sha256);
-    println!("SHA-384 Hash:\n {:?}\n", hash_sha384);
-    println!("SHA-512 Hash:\n {:?}\n", hash_sha512);
-    println!("MD5 Hash:\n {:?}\n", hash_md5);
-    println!("BLAKE2b Hash:\n {:?}\n", hash_blake2b);
-    println!("Bcrypt Hash:\n {}\n", bcrypt_hash);
-    println!("BLAKE2s Hash:\n {:?}\n", hash_blake2s);
 }
+
+
+
+
 
 // Format our path
 fn key_file_path(name: &str) -> String {

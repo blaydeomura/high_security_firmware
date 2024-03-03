@@ -26,6 +26,8 @@
     --filename: Sets the input file to calculate hash for.
 
 ## Example Usages
+- Overall format:
+    - cargo run -- <generate/access/remove> --name <name> --encryption-key <32 byte encryption key>
 - Generate a Key:
     - cargo run -- generate --name Mallory --encryption-key "ThisIsA32ByteLongEncryptionKey00"
 - Access a Key:
@@ -33,8 +35,12 @@
 - Remove a Key:
     - cargo run -- remove --name Mallory
 - Hash a File:
-    - cargo run --hash-file <filename>
-    -  Run cargo build --release to build the executable.
+    - Run cargo build --release to build the executable.
+    - cargo run -- hash-file -- filename <filename> --algorithm <algo name>
+        - cargo run -- hash-file --filename "files/file_test.txt" --algorithm "sha256"
+        - cargo run -- hash-file --filename "files/file_test.txt" --algorithm "blake3"
+        - cargo run -- hash-file --filename "files/file_test.txt" --algorithm "sha256"
+        - cargo run -- hash-file --filename "files/file_test.txt" --algorithm "sha512"
     - openSSl Command Line Arguments:
         1. SHA-256:  openssl dgst -sha256 <filename>
         2. SHA-384:  openssl dgst -sha384 <filename>
