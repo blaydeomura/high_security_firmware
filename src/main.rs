@@ -1,9 +1,9 @@
-use clap::{Parser, Subcommand};
+use std::io::Read;                
+use std::fs::File;                
+use std::path::Path;                         
+use sha2::{Digest, Sha256, Sha384, Sha512};                       
 use ring::signature::Ed25519KeyPair;
 use std::collections::HashMap;
-use std::fs::{self, File};
-use std::io::Read;
-use std::path::Path;
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use aes_gcm::Aes256Gcm; 
@@ -13,37 +13,8 @@ use aes_gcm::KeyInit;
 use ::rand::rngs::OsRng;
 use aes_gcm::Nonce; 
 use ::rand::Rng; 
-
-//*-----------------------------------Notes--------------------------------------------------------*/
-// Command line tool for managing a wallet of encrypted key pairs.
-// Provides functionality for generating, accessing, and removing key pairs.
-// Keys are encrypted using AES-GCM encryption with a user provided key
-//
-// Wallet.json contains hashmap<Name, Path to key>
-// Keys: keys is a directory that has pk8 file of encrypted keys
-// --------------------------------------------------------------------------------------------------
-
-//*-----------------------------------TODO--------------------------------------------------------*/
-// - add in more command line options 
-// - Not input encryption key in command line
-// - more secure way to store keys?
-// --------------------------------------------------------------------------------------------------
-
-
-//***********Example Usages**************************************************************************/
-// 1. Generate a key for a person with a specific encryption key (has to be 32 bit)
-        // This will need to be more secure later
-// 2. Access person's generated key with same encryption key
-// 3. You can remove without key
-
-//cargo run -- generate --name Mallory --encryption-key "ThisIsA32ByteLongEncryptionKey00"
-//cargo run -- access --name Mallory --encryption-key "ThisIsA32ByteLongEncryptionKey00"
-//cargo run -- remove --name Mallory 
-
-// cargo run -- generate --name Bob --encryption-key "ThisIsA32ByteLongEncryptionKey11"
-//cargo run -- access --name Bob --encryption-key "ThisIsA32ByteLongEncryptionKey11"
-//cargo run -- remove --name Bob 
-//*****************************************************************************************************/
+use clap::{Subcommand, Parser};
+use std::fs;
 
 
 // Struct for wallet: stores keys mapped to names
@@ -90,7 +61,6 @@ impl Wallet {
     }
 }
 
-
 // command line arguments
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -128,8 +98,17 @@ enum Commands {
         #[arg(short, long)]
         encryption_key: String,
     },
-}
 
+    HashFile {
+        // Name of the file to be hashed
+        #[arg(short, long)]
+        filename: String,
+
+        /// The hashing algorithm to use (e.g., blake3, sha256)
+        #[arg(short, long)]
+        algorithm: String,
+    },
+}
 
 fn main() {
     let args = Args::parse();
@@ -149,8 +128,51 @@ fn main() {
             let encryption_key_bytes = encryption_key.as_bytes();
             access_key(&wallet, &name, encryption_key_bytes);
         },
+        // Commands::HashFile { filename } => {
+        //     hash_file(&filename);
+        // }
+        Commands::HashFile { filename, algorithm } => {
+            hash_file(&filename, &algorithm);
+        }
     }
 }
+
+
+fn hash_file(filename: &str, algorithm: &str) {
+    let path = Path::new(filename);
+    let mut file = match File::open(&path) {
+        Err(why) => panic!("Couldn't open {}: {}", path.display(), why),
+        Ok(file) => file,
+    };
+
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).expect("Couldn't read file");
+
+    match algorithm.to_lowercase().as_str() {
+        "blake3" => {
+            let hash = blake3::hash(&buffer);
+            println!("BLAKE3 Hash: {:?}", hash);
+        },
+        "sha256" => {
+            let hash = Sha256::digest(&buffer);
+            println!("SHA-256 Hash: {:x}", hash);
+        },
+        "sha384" => {
+            let hash = Sha384::digest(&buffer);
+            println!("SHA-384 Hash: {:x}", hash);
+        },
+        "sha512" => {
+            let hash = Sha512::digest(&buffer);
+            println!("SHA-512 Hash: {:x}", hash);
+        },
+        // Add other algorithms here...
+        _ => println!("Unsupported algorithm. Please specify a valid algorithm."),
+    }
+}
+
+
+
+
 
 // Format our path
 fn key_file_path(name: &str) -> String {
@@ -226,14 +248,13 @@ fn access_key(wallet: &Wallet, name: &str, encryption_key: &[u8]) {
     }
 }
 
-
 // Encrypts data with AES-GCM library with a provided key
 // NEEDS UPDATE TO MORE SECURE
 fn encrypt_data(data: &[u8], key: &[u8]) -> Vec<u8> {
     let cipher = Aes256Gcm::new(GenericArray::from_slice(key));
-    
+
     // Create the nonce and store it in a variable to extend its lifetime
-    let nonce_array = OsRng.gen::<[u8; 12]>(); // Generate a random nonce
+    let nonce_array = OsRng.gen::<[u8; 12]>();  // Generate a random nonce
     let nonce = Nonce::from_slice(&nonce_array); // Convert the array into a Nonce type
     
     let encrypted_data = cipher.encrypt(nonce, data.as_ref())
