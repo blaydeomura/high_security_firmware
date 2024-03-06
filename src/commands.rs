@@ -1,6 +1,6 @@
+// A module for parsing command line arguments using the clap library
 use clap::{Subcommand, Parser};
 
-// command line arguments
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
@@ -8,36 +8,36 @@ pub struct Args {
     pub command: Commands,
 }
 
-// the possible command line arguments
+// Possible commands that the program accepts
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Generates a new key pair for a given name and encryption key
+    // Generates a new key pair for a given name and encryption key
     Generate {
-        /// Name of the person
+        // Name of the person
         #[arg(short, long)]
         name: String,
         
-        /// Encryption key to secure the key pair
+        // Encryption key to secure the key pair
         #[arg(short, long)]
         encryption_key: String,
     },
-    /// Removes an existing key pair
+    // Removes an existing key pair
     Remove {
-        /// Name of the person
+        // Name of the person
         #[arg(short, long)]
         name: String,
     },
-    /// Accesses an existing key pair with the encryption key
+    // Accesses an existing key pair with the encryption key
     Access {
-        /// Name of the person
+        // Name of the person
         #[arg(short, long)]
         name: String,
         
-        /// Encryption key to decrypt the key pair
+        // Encryption key to decrypt the key pair
         #[arg(short, long)]
         encryption_key: String,
     },
-
+    // Hashes a provided file with the specfified algorithm
     HashFile {
         // Name of the file to be hashed
         #[arg(short, long)]
@@ -47,30 +47,27 @@ pub enum Commands {
         #[arg(short, long)]
         algorithm: String,
     },
-
-    // adding in key signing
-       /// Signs a file with a given name's private key
-       Sign {
-        /// Name of the person
-        #[arg(short, long)]
-        name: String,
-        
-        /// File to sign
-        #[arg(short, long)]
-        filename: String,
-    },
+    // Signs a file with a provided persons private key
+    Sign {
+    // Name of the person
+    #[arg(short, long)]
+    name: String,
     
-    /// Verifies a file with a given public key
+    // File to sign
+    #[arg(short, long)]
+    filename: String,
+    },
+    // Verifies the signature of a file with a provided public key
     Verify {
-        /// Name of the person
+        // Name of the person
         #[arg(short, long)]
         name: String,
         
-        /// File to verify
+        // File to verify
         #[arg(short, long)]
         filename: String,
         
-        /// Signature to verify against
+        // Signature to verify against
         #[arg(short, long)]
         signature: String,
     },
