@@ -2,7 +2,7 @@ use std::io::Read;
 use std::fs::File;                
 use std::path::Path;                         
 use sha2::{Digest, Sha256, Sha384, Sha512};                       
-use ring::signature::Ed25519KeyPair;
+// use ring::signature::Ed25519KeyPair;
 use std::collections::HashMap;
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,19 @@ use aes_gcm::Nonce;
 use ::rand::Rng; 
 use clap::{Subcommand, Parser};
 use std::fs;
+use ring::rand::SystemRandom;
+// use ring::signature::{ED25519, UnparsedPublicKey, Signature};
+use ring::signature::{Ed25519KeyPair, KeyPair, Signature, UnparsedPublicKey, ED25519};
+use std::path::PathBuf;
+
+
+use std::{error::Error, fmt};
+use ring::error::KeyRejected;
+
+
+
+
+
 
 
 // Struct for wallet: stores keys mapped to names
@@ -108,6 +121,33 @@ enum Commands {
         #[arg(short, long)]
         algorithm: String,
     },
+
+    // adding in key signing
+       /// Signs a file with a given name's private key
+       Sign {
+        /// Name of the person
+        #[arg(short, long)]
+        name: String,
+        
+        /// File to sign
+        #[arg(short, long)]
+        filename: String,
+    },
+    
+    /// Verifies a file with a given public key
+    Verify {
+        /// Name of the person
+        #[arg(short, long)]
+        name: String,
+        
+        /// File to verify
+        #[arg(short, long)]
+        filename: String,
+        
+        /// Signature to verify against
+        #[arg(short, long)]
+        signature: String,
+    },
 }
 
 fn main() {
@@ -128,12 +168,29 @@ fn main() {
             let encryption_key_bytes = encryption_key.as_bytes();
             access_key(&wallet, &name, encryption_key_bytes);
         },
-        // Commands::HashFile { filename } => {
-        //     hash_file(&filename);
-        // }
         Commands::HashFile { filename, algorithm } => {
             hash_file(&filename, &algorithm);
-        }
+        },
+
+        //adding in signing and verify
+        Commands::Sign { name, filename } => {
+            // Assuming you have the encryption key available, possibly asking the user for it
+            println!("Enter the encryption key for {}: ", name);
+            let mut encryption_key = String::new();
+            std::io::stdin().read_line(&mut encryption_key).expect("Failed to read line");
+            let encryption_key = encryption_key.trim(); // Trim newline characters
+
+            sign_file(&wallet, &name, &filename, encryption_key.as_bytes());
+        },
+        Commands::Verify { name, filename, signature } => {
+            // Similarly, assuming the encryption key could be requested or derived as needed
+            println!("Enter the encryption key for {}: ", name);
+            let mut encryption_key = String::new();
+            std::io::stdin().read_line(&mut encryption_key).expect("Failed to read line");
+            let encryption_key = encryption_key.trim(); // Trim newline characters
+
+            verify_file(&wallet, &name, &filename, &signature, encryption_key.as_bytes());
+        },
     }
 }
 
@@ -200,34 +257,97 @@ fn generate_key(wallet: &mut Wallet, name: &str, encryption_key: &[u8]) {
     }
 }
 
-// generates key pair and encrypts it
-fn generate_and_save_key_pair(path: &Path, encryption_key: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
-    let rng = ring::rand::SystemRandom::new();
-    let pkcs8_bytes_result = Ed25519KeyPair::generate_pkcs8(&rng);
+// // generates key pair and encrypts it
+// fn generate_and_save_key_pair(path: &Path, encryption_key: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+//     let rng = ring::rand::SystemRandom::new();
+//     let pkcs8_bytes_result = Ed25519KeyPair::generate_pkcs8(&rng);
 
-    // Manually handle the error
-    let pkcs8_bytes = pkcs8_bytes_result.map_err(|e| format!("Failed to generate key pair: {:?}", e))?;
+//     // Manually handle the error
+//     let pkcs8_bytes = pkcs8_bytes_result.map_err(|e| format!("Failed to generate key pair: {:?}", e))?;
 
-    // Proceed with encryption and saving the key
-    let encrypted_data = encrypt_data(&pkcs8_bytes.as_ref().to_vec(), encryption_key);
+//     // Proceed with encryption and saving the key
+//     let encrypted_data = encrypt_data(&pkcs8_bytes.as_ref().to_vec(), encryption_key);
     
-    if let Some(dir_path) = path.parent() {
-        std::fs::create_dir_all(dir_path)?;
-    }
-    std::fs::write(path, &encrypted_data)?;
+//     if let Some(dir_path) = path.parent() {
+//         std::fs::create_dir_all(dir_path)?;
+//     }
+//     std::fs::write(path, &encrypted_data)?;
+
+
+//     // save public key as well
+//     let key_pair = Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())?;
+//     let public_key = key_pair.public_key();
+//     let public_key_path = path.with_extension("pub.pk8");
+//     fs::write(public_key_path, public_key.as_ref())?;
+
+
+//     Ok(())
+// }
+fn generate_and_save_key_pair(path: &Path, encryption_key: &[u8]) -> Result<(), MyError> {
+    let rng = ring::rand::SystemRandom::new();
+    let pkcs8_bytes = Ed25519KeyPair::generate_pkcs8(&rng)
+        .map_err(MyError::from)?;
+
+    let key_pair = Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())
+        .map_err(MyError::from)?;
+
+    // Encrypt and save the private key
+    let encrypted_data = encrypt_data(pkcs8_bytes.as_ref(), encryption_key);
+    fs::write(path, &encrypted_data)
+        .map_err(|e| MyError::Unspecified(ring::error::Unspecified {}))?; // You need a way to convert io::Error to MyError
+
+    // Save the public key
+    let public_key_bytes = key_pair.public_key().as_ref();
+    let public_key_path = path.with_extension("pub.pk8");
+    fs::write(public_key_path, public_key_bytes)
+        .map_err(|e| MyError::Unspecified(ring::error::Unspecified {}))?; // Same here
 
     Ok(())
 }
 
-// remove key from persistent storage if needed
+
+
+
+// // remove key from persistent storage if needed
+// fn remove_key(wallet: &mut Wallet, name: &str) {
+//     if let Some(path) = wallet.remove_key(name) {
+//         fs::remove_file(path).expect("Failed to remove key file");
+//         println!("Key file for {} has been removed.", name);
+//     } else {
+//         println!("No key file found for {}.", name);
+//     }
+// }
 fn remove_key(wallet: &mut Wallet, name: &str) {
-    if let Some(path) = wallet.remove_key(name) {
-        fs::remove_file(path).expect("Failed to remove key file");
-        println!("Key file for {} has been removed.", name);
+    if let Some(path_str) = wallet.remove_key(name) {
+        // Convert the private key path from String to PathBuf
+        let private_key_path = PathBuf::from(path_str);
+        
+        // Attempt to remove the private key file
+        if fs::remove_file(&private_key_path).is_ok() {
+            println!("Private key file for {} has been removed.", name);
+        } else {
+            eprintln!("Failed to remove private key file for {}.", name);
+        }
+
+        // Construct the path for the public key file by changing the extension
+        let public_key_path = private_key_path.with_extension("pub.pk8");
+        
+        // Attempt to remove the public key file
+        if fs::remove_file(&public_key_path).is_ok() {
+            println!("Public key file for {} has been removed.", name);
+        } else {
+            eprintln!("Failed to remove public key file for {}.", name);
+        }
     } else {
         println!("No key file found for {}.", name);
     }
 }
+
+
+
+
+
+
 
 // access key from persitent wallet
 fn access_key(wallet: &Wallet, name: &str, encryption_key: &[u8]) {
@@ -271,4 +391,79 @@ fn decrypt_data(encrypted_data: &[u8], key: &[u8]) -> Vec<u8> {
     cipher.decrypt(Nonce::from_slice(nonce), ciphertext.as_ref())
         .expect("decryption failure")
 }
+
+
+// Signing and verifying
+fn sign_file(wallet: &Wallet, name: &str, filename: &str, encryption_key: &[u8]) {
+    if let Some(path_str) = wallet.get_key_path(name) {
+        let path = Path::new(path_str);
+        let encrypted_data = fs::read(path).expect("Failed to read key file");
+        let decrypted_data = decrypt_data(&encrypted_data, encryption_key);
+
+        let key_pair = Ed25519KeyPair::from_pkcs8(&decrypted_data).expect("Invalid PKCS8");
+        let file_data = fs::read(filename).expect("Failed to read file to sign");
+        
+        let signature = key_pair.sign(&file_data);
+
+        // Output the signature in a usable format, e.g., hex or base64
+        println!("Signature (Base64 encoded): {}", base64::encode(signature.as_ref()));
+    } else {
+        println!("No key file found for {}.", name);
+    }
+}
+
+fn verify_file(wallet: &Wallet, name: &str, filename: &str, signature: &str, encryption_key: &[u8]) {
+    // Load the public key
+    let public_key_path = format!("keys/{}.pub.pk8", name);
+    let public_key_data = fs::read(public_key_path).expect("Failed to read public key file");
+    
+    let file_data = fs::read(filename).expect("Failed to read file to verify");
+    let signature_bytes = base64::decode(signature).expect("Failed to decode signature");
+
+    // Use the loaded public key for verification
+    let public_key = UnparsedPublicKey::new(&ED25519, public_key_data.as_slice()); // Use as_slice() here
+    match public_key.verify(file_data.as_slice(), &signature_bytes) { // Ensure file_data is treated as a slice
+        Ok(_) => println!("Verification successful."),
+        Err(_) => println!("Verification failed."),
+    }
+}
+
+
+
+// Error handling
+
+#[derive(Debug)]
+enum MyError {
+    KeyRejected(KeyRejected),
+    Unspecified(ring::error::Unspecified), // Add this line
+    // expand on cases later
+}
+
+impl fmt::Display for MyError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            MyError::KeyRejected(e) => write!(f, "Key rejected: {:?}", e),
+            MyError::Unspecified(_) => write!(f, "An unspecified error occurred"),
+            // Input other cases here
+        }
+    }
+}
+
+impl Error for MyError {}
+
+impl From<KeyRejected> for MyError {
+    fn from(err: KeyRejected) -> MyError {
+        MyError::KeyRejected(err)
+    }
+}
+
+impl From<ring::error::Unspecified> for MyError {
+    fn from(err: ring::error::Unspecified) -> MyError {
+        MyError::Unspecified(err)
+    }
+}
+
+
+
+
 

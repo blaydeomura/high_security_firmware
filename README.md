@@ -35,7 +35,7 @@
 - Remove a Key:
     - cargo run -- remove --name Mallory
 - Hash a File:
-    - Run cargo build --release to build the executable.
+    - Run "cargo build --release" to build the executable.
     - cargo run -- hash-file -- filename <filename> --algorithm <algo name>
         - cargo run -- hash-file --filename "files/file_test.txt" --algorithm "sha256"
         - cargo run -- hash-file --filename "files/file_test.txt" --algorithm "blake3"
@@ -46,7 +46,23 @@
         2. SHA-384:  openssl dgst -sha384 <filename>
         3. SHA-512:  openssl dgst -sha512 <filename>
         4. MD5:      openssl dgst -md5 <filename>
+- Sign a file:
+    - cargo run -- sign --name <name> --filename "<path to existing file>"
+        - prompted with encryption key...
+        - <32 bit encryption key that you used encrypt file>
+    - example:
+        - cargo run -- sign --name Mallory --filename files/file_test.txt
+        - ThisIsA32ByteLongEncryptionKey00
+        - output is a signature: 52wK9duprRcSsConeLtRbDHz0Lw1he+QY8sttt4RLRT3RgJ7N40HMQnzmBfRjI4lyaZYddM607TnnwO6bB07CQ==
+    - 
+- Verify a file:
+    - cargo run -- verify --name <name> --filename keys/<file name> --signature <signature given from sign>
+        - promted to enter ecryption key.. <32 bit encryption key used when generating key>
+    - example
+        - cargo run -- verify --name Mallory --filename "files/file_test.txt" --signature 52wK9duprRcSsConeLtRbDHz0Lw1he+QY8sttt4RLRT3RgJ7N40HMQnzmBfRjI4lyaZYddM607TnnwO6bB07CQ==
+        - ThisIsA32ByteLongEncryptionKey00
+
+
 
 ## Persistence
 - Wallet data is stored in a JSON file named wallet.json, which contains a hashmap of names mapped to the path where the encrypted key is stored.
-
