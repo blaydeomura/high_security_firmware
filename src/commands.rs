@@ -1,4 +1,6 @@
 // A module for parsing command line arguments using the clap library
+// Commands perform various cryptographic operations
+
 use clap::{Subcommand, Parser};
 
 #[derive(Parser, Debug)]
