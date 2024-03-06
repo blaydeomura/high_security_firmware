@@ -2,9 +2,8 @@ use std::io::Read;
 use std::fs::File;                
 use std::path::Path;                         
 use sha2::{Digest, Sha256, Sha384, Sha512};                       
-// use ring::signature::Ed25519KeyPair;
 use std::collections::HashMap;
-use base64::{Engine as _, engine::general_purpose};
+use base64::{Engine as _, engine::general_purpose, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 use aes_gcm::Aes256Gcm; 
 use aes_gcm::aead::generic_array::GenericArray; 
@@ -15,20 +14,10 @@ use aes_gcm::Nonce;
 use ::rand::Rng; 
 use clap::{Subcommand, Parser};
 use std::fs;
-use ring::rand::SystemRandom;
-// use ring::signature::{ED25519, UnparsedPublicKey, Signature};
-use ring::signature::{Ed25519KeyPair, KeyPair, Signature, UnparsedPublicKey, ED25519};
+use ring::signature::{Ed25519KeyPair, KeyPair, UnparsedPublicKey, ED25519};
 use std::path::PathBuf;
-
-
 use std::{error::Error, fmt};
 use ring::error::KeyRejected;
-
-
-
-
-
-
 
 // Struct for wallet: stores keys mapped to names
 // HashMap: Key = Key of person (String), Value = Path where key is stored (String)
@@ -257,32 +246,7 @@ fn generate_key(wallet: &mut Wallet, name: &str, encryption_key: &[u8]) {
     }
 }
 
-// // generates key pair and encrypts it
-// fn generate_and_save_key_pair(path: &Path, encryption_key: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
-//     let rng = ring::rand::SystemRandom::new();
-//     let pkcs8_bytes_result = Ed25519KeyPair::generate_pkcs8(&rng);
 
-//     // Manually handle the error
-//     let pkcs8_bytes = pkcs8_bytes_result.map_err(|e| format!("Failed to generate key pair: {:?}", e))?;
-
-//     // Proceed with encryption and saving the key
-//     let encrypted_data = encrypt_data(&pkcs8_bytes.as_ref().to_vec(), encryption_key);
-    
-//     if let Some(dir_path) = path.parent() {
-//         std::fs::create_dir_all(dir_path)?;
-//     }
-//     std::fs::write(path, &encrypted_data)?;
-
-
-//     // save public key as well
-//     let key_pair = Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())?;
-//     let public_key = key_pair.public_key();
-//     let public_key_path = path.with_extension("pub.pk8");
-//     fs::write(public_key_path, public_key.as_ref())?;
-
-
-//     Ok(())
-// }
 fn generate_and_save_key_pair(path: &Path, encryption_key: &[u8]) -> Result<(), MyError> {
     let rng = ring::rand::SystemRandom::new();
     let pkcs8_bytes = Ed25519KeyPair::generate_pkcs8(&rng)
@@ -294,29 +258,18 @@ fn generate_and_save_key_pair(path: &Path, encryption_key: &[u8]) -> Result<(), 
     // Encrypt and save the private key
     let encrypted_data = encrypt_data(pkcs8_bytes.as_ref(), encryption_key);
     fs::write(path, &encrypted_data)
-        .map_err(|e| MyError::Unspecified(ring::error::Unspecified {}))?; // You need a way to convert io::Error to MyError
+        .map_err(|_e| MyError::Unspecified(ring::error::Unspecified {}))?; // You need a way to convert io::Error to MyError
 
     // Save the public key
     let public_key_bytes = key_pair.public_key().as_ref();
     let public_key_path = path.with_extension("pub.pk8");
     fs::write(public_key_path, public_key_bytes)
-        .map_err(|e| MyError::Unspecified(ring::error::Unspecified {}))?; // Same here
+        .map_err(|_e| MyError::Unspecified(ring::error::Unspecified {}))?; // Same here
 
     Ok(())
 }
 
 
-
-
-// // remove key from persistent storage if needed
-// fn remove_key(wallet: &mut Wallet, name: &str) {
-//     if let Some(path) = wallet.remove_key(name) {
-//         fs::remove_file(path).expect("Failed to remove key file");
-//         println!("Key file for {} has been removed.", name);
-//     } else {
-//         println!("No key file found for {}.", name);
-//     }
-// }
 fn remove_key(wallet: &mut Wallet, name: &str) {
     if let Some(path_str) = wallet.remove_key(name) {
         // Convert the private key path from String to PathBuf
@@ -406,19 +359,22 @@ fn sign_file(wallet: &Wallet, name: &str, filename: &str, encryption_key: &[u8])
         let signature = key_pair.sign(&file_data);
 
         // Output the signature in a usable format, e.g., hex or base64
-        println!("Signature (Base64 encoded): {}", base64::encode(signature.as_ref()));
+        // println!("Signature (Base64 encoded): {}", base64::encode(signature.as_ref()));
+        println!("Signature (Base64 encoded): {}", STANDARD.encode(signature.as_ref()));
     } else {
         println!("No key file found for {}.", name);
     }
 }
 
-fn verify_file(wallet: &Wallet, name: &str, filename: &str, signature: &str, encryption_key: &[u8]) {
+fn verify_file(_wallet: &Wallet, name: &str, filename: &str, signature: &str, _encryption_key: &[u8]) {
     // Load the public key
     let public_key_path = format!("keys/{}.pub.pk8", name);
     let public_key_data = fs::read(public_key_path).expect("Failed to read public key file");
     
     let file_data = fs::read(filename).expect("Failed to read file to verify");
-    let signature_bytes = base64::decode(signature).expect("Failed to decode signature");
+    // let signature_bytes = base64::decode(signature).expect("Failed to decode signature");
+    let signature_bytes = STANDARD.decode(signature)
+    .expect("Failed to decode signature");
 
     // Use the loaded public key for verification
     let public_key = UnparsedPublicKey::new(&ED25519, public_key_data.as_slice()); // Use as_slice() here
@@ -430,8 +386,7 @@ fn verify_file(wallet: &Wallet, name: &str, filename: &str, signature: &str, enc
 
 
 
-// Error handling
-
+// Error handling below
 #[derive(Debug)]
 enum MyError {
     KeyRejected(KeyRejected),
