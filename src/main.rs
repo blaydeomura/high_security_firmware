@@ -10,7 +10,7 @@ use aes_gcm::KeyInit;
 use ::rand::rngs::OsRng;
 use aes_gcm::Nonce; 
 use ::rand::Rng; 
-use clap::{Subcommand, Parser};
+use clap::Parser;
 use std::fs;
 use ring::signature::{Ed25519KeyPair, KeyPair, UnparsedPublicKey, ED25519};
 use std::path::PathBuf;
@@ -18,82 +18,7 @@ use std::{error::Error, fmt};
 use ring::error::KeyRejected;
 
 use rust_cli::wallet::Wallet;
-
-// command line arguments
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-// the possible command line arguments
-#[derive(Subcommand, Debug)]
-enum Commands {
-    /// Generates a new key pair for a given name and encryption key
-    Generate {
-        /// Name of the person
-        #[arg(short, long)]
-        name: String,
-        
-        /// Encryption key to secure the key pair
-        #[arg(short, long)]
-        encryption_key: String,
-    },
-    /// Removes an existing key pair
-    Remove {
-        /// Name of the person
-        #[arg(short, long)]
-        name: String,
-    },
-    /// Accesses an existing key pair with the encryption key
-    Access {
-        /// Name of the person
-        #[arg(short, long)]
-        name: String,
-        
-        /// Encryption key to decrypt the key pair
-        #[arg(short, long)]
-        encryption_key: String,
-    },
-
-    HashFile {
-        // Name of the file to be hashed
-        #[arg(short, long)]
-        filename: String,
-
-        /// The hashing algorithm to use (e.g., blake3, sha256)
-        #[arg(short, long)]
-        algorithm: String,
-    },
-
-    // adding in key signing
-       /// Signs a file with a given name's private key
-       Sign {
-        /// Name of the person
-        #[arg(short, long)]
-        name: String,
-        
-        /// File to sign
-        #[arg(short, long)]
-        filename: String,
-    },
-    
-    /// Verifies a file with a given public key
-    Verify {
-        /// Name of the person
-        #[arg(short, long)]
-        name: String,
-        
-        /// File to verify
-        #[arg(short, long)]
-        filename: String,
-        
-        /// Signature to verify against
-        #[arg(short, long)]
-        signature: String,
-    },
-}
+use rust_cli::commands::{Args, Commands};
 
 fn main() {
     let args = Args::parse();
@@ -172,10 +97,6 @@ fn hash_file(filename: &str, algorithm: &str) {
     }
 }
 
-
-
-
-
 // Format our path
 fn key_file_path(name: &str) -> String {
     format!("keys/{}.pk8", name)
@@ -201,7 +122,6 @@ fn generate_key(wallet: &mut Wallet, name: &str, encryption_key: &[u8]) {
         Err(e) => eprintln!("Failed to generate and save key pair for {}: {}", name, e),
     }
 }
-
 
 fn generate_and_save_key_pair(path: &Path, encryption_key: &[u8]) -> Result<(), MyError> {
     let rng = ring::rand::SystemRandom::new();
@@ -251,12 +171,6 @@ fn remove_key(wallet: &mut Wallet, name: &str) {
         println!("No key file found for {}.", name);
     }
 }
-
-
-
-
-
-
 
 // access key from persitent wallet
 fn access_key(wallet: &Wallet, name: &str, encryption_key: &[u8]) {
