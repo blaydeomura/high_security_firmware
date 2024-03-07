@@ -86,6 +86,7 @@ pub fn generate_key(wallet: &mut Wallet, name: &str, encryption_key: &[u8]) {
     }
 }
 
+// Helper function to generate key pair and write key pair to a file
 fn generate_and_save_key_pair(path: &Path, encryption_key: &[u8]) -> Result<(), MyError> {
     let rng = ring::rand::SystemRandom::new();
     let pkcs8_bytes = Ed25519KeyPair::generate_pkcs8(&rng)
