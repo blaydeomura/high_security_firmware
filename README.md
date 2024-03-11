@@ -50,13 +50,13 @@
     - example:
         - cargo run -- sign --name Mallory --filename files/file_test.txt
         - ThisIsA32ByteLongEncryptionKey00
-        - output is a signature: izDIWHrJBhVX2M1ZHo+qJ2qLcfeScvfigFQW4VsTChEf+8jw0hOXCFLRPqnfGMIfHHcs2HE18htAX5amXbQdBg==
+        - output is a signature: yE6eM3N+Ap8DQey6JWMmp/PtGEBq1zv7fNMXya5+fmkNvFGl7b9nEnQk25Z8tRAmMTanoetXw/ppayte27ZdAA==
     
 - Verify a file:
     - cargo run -- verify --name <name> --filename keys/<file name> --signature <signature given from sign>
         - promted to enter ecryption key.. <32 bit encryption key used when generating key>
     - example
-        - cargo run -- verify --name Mallory --filename "files/file_test.txt" --signature izDIWHrJBhVX2M1ZHo+qJ2qLcfeScvfigFQW4VsTChEf+8jw0hOXCFLRPqnfGMIfHHcs2HE18htAX5amXbQdBg==
+        - cargo run -- verify --name Mallory --filename "files/file_test.txt" --signature yE6eM3N+Ap8DQey6JWMmp/PtGEBq1zv7fNMXya5+fmkNvFGl7b9nEnQk25Z8tRAmMTanoetXw/ppayte27ZdAA==
         - ThisIsA32ByteLongEncryptionKey00
 
 - Hash a File:

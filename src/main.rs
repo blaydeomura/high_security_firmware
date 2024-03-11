@@ -35,12 +35,7 @@ fn main() {
             file_ops::sign_file(&wallet, &name, &filename, encryption_key.as_bytes());
         },
         Commands::Verify { name, filename, signature } => {
-            // Similarly, assuming the encryption key could be requested or derived as needed
-            println!("Enter the encryption key for {}: ", name);
-            let mut encryption_key = String::new();
-            std::io::stdin().read_line(&mut encryption_key).expect("Failed to read line");
-            let encryption_key = encryption_key.trim(); // Trim newline characters
-            file_ops::verify_file(&wallet, &name, &filename, &signature, encryption_key.as_bytes());
+            file_ops::verify_file(&wallet, &name, &filename, &signature);
         },
     }
 }

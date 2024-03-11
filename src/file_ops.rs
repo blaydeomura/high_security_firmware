@@ -53,20 +53,19 @@ pub fn sign_file(wallet: &Wallet, name: &str, filename: &str, encryption_key: &[
         let signature = key_pair.sign(&file_data);
 
         // Output the signature in a usable format, e.g., hex or base64
-        // println!("Signature (Base64 encoded): {}", base64::encode(signature.as_ref()));
         println!("Signature (Base64 encoded): {}", STANDARD.encode(signature.as_ref()));
     } else {
         println!("No key file found for {}.", name);
     }
 }
 
-pub fn verify_file(_wallet: &Wallet, name: &str, filename: &str, signature: &str, _encryption_key: &[u8]) {
+pub fn verify_file(_wallet: &Wallet, name: &str, filename: &str, signature: &str) {
+
     // Load the public key
     let public_key_path = format!("keys/{}.pub.pk8", name);
     let public_key_data = fs::read(public_key_path).expect("Failed to read public key file");
     
     let file_data = fs::read(filename).expect("Failed to read file to verify");
-    // let signature_bytes = base64::decode(signature).expect("Failed to decode signature");
     let signature_bytes = STANDARD.decode(signature)
     .expect("Failed to decode signature");
 
