@@ -2,7 +2,7 @@ use std::fs;
 use std::fs::File;                
 use std::io::Read;                
 use std::path::Path;                         
-use sha2::{Digest, Sha256, Sha384, Sha512};                       
+use sha2::{Digest, Sha256, Sha384, Sha512}; 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use ring::signature::{Ed25519KeyPair, UnparsedPublicKey, ED25519};
 use super::wallet;

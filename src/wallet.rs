@@ -20,7 +20,7 @@ use super::error::MyError;
 // Wallet contains a hashmap with names of individuals and paths to all crypto keys associated with that name
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Wallet {
-    keys: HashMap<String, String>, // Maps a name to a path where the key is stored
+   pub keys: HashMap<String, String>, // Maps a name to a path where the key is stored //TODO: create list of objects that can be found by their name <String, Persona Object>
 }
 
 impl Wallet {
@@ -61,7 +61,7 @@ impl Wallet {
 }
 
 // Format path to key file
-fn key_file_path(name: &str) -> String {
+pub fn key_file_path(name: &str) -> String {
     format!("keys/{}.pk8", name)
 }
 

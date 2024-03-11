@@ -21,3 +21,4 @@ md5 = "0.7.0"            # For MD5 hashing
 blake2b_simd = "1.0.2"   # For BLAKE2b hashing
 blake2s_simd = "1.0.2"  # For BLAKE2s hashing
 bcrypt = "0.11.0"        # For bcrypt hashing
+tempfile = "3.2"
