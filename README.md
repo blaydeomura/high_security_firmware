@@ -72,6 +72,9 @@
         3. SHA-512:  openssl dgst -sha512 <filename>
         4. MD5:      openssl dgst -md5 <filename>
 
+- Testing 
+    1. cargo test --test main_and_commands_test
+    2. cargo test --test wallet_test
 
 
 ## Persistence

@@ -2,7 +2,7 @@ use std::fs;
 use std::fs::File;                
 use std::io::Read;                
 use std::path::Path;                         
-use sha2::{Digest, Sha256, Sha384, Sha512};                       
+use sha2::{Digest, Sha256, Sha384, Sha512}; 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use ring::signature::{Ed25519KeyPair, UnparsedPublicKey, ED25519};
 use super::wallet;
@@ -40,8 +40,7 @@ pub fn hash_file(filename: &str, algorithm: &str) {
     }
 }
 
-// Signing and verifying
-pub fn sign_file(wallet: &Wallet, name: &str, filename: &str, encryption_key: &[u8]) {
+pub fn sign_file(wallet: &Wallet, name: &str, filename: &str, encryption_key: &[u8]) -> String {
     if let Some(path_str) = wallet.get_key_path(name) {
         let path = Path::new(path_str);
         let encrypted_data = fs::read(path).expect("Failed to read key file");
@@ -53,12 +52,13 @@ pub fn sign_file(wallet: &Wallet, name: &str, filename: &str, encryption_key: &[
         let signature = key_pair.sign(&file_data);
 
         // Output the signature in a usable format, e.g., hex or base64
-        // println!("Signature (Base64 encoded): {}", base64::encode(signature.as_ref()));
-        println!("Signature (Base64 encoded): {}", STANDARD.encode(signature.as_ref()));
+        STANDARD.encode(signature.as_ref()).into() // Convert to String
     } else {
         println!("No key file found for {}.", name);
+        String::new() // Return an empty string if no key file is found
     }
 }
+
 
 pub fn verify_file(_wallet: &Wallet, name: &str, filename: &str, signature: &str, _encryption_key: &[u8]) {
     // Load the public key
