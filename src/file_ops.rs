@@ -53,7 +53,9 @@ pub fn sign_file(wallet: &Wallet, name: &str, filename: &str, encryption_key: &[
 
         // Output the signature in a usable format, e.g., hex or base64
         println!("Signature (Base64 encoded): {}", STANDARD.encode(signature.as_ref()));
-
+        // Returning the signature as a String (for example, encoded in Base64)
+        STANDARD.encode(signature.as_ref())
+        
     } else {
         println!("No key file found for {}.", name);
         String::new() // Return an empty string if no key file is found
