@@ -1,4 +1,4 @@
-// A cipher suite of quantum safe algorithms from Open Quantum Society
+// A cipher suite of quantum safe algorithms from Open Quantum Safe
 // Users can select an algorithm for both key exchange and signing
 
 use oqs;
