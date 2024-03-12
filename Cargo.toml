@@ -26,4 +26,4 @@ tempfile = "3.2"
 [dependencies.oqs]
 version = "*"
 default-features = false
-features = ["sigs", "kems"]
+features = ["sigs", "kems", "serde"]
