@@ -13,7 +13,7 @@ pub struct Persona {
 }
 
 impl Persona {
-    pub fn new(&self, name: String, kem_algo: &str, sig_algo: &str) -> Self {
+    pub fn new(&self, name: String, sig_algo: &str) -> Self {
         // Initialize sig algorithms
         let sig_algo = get_sig_algorithm(sig_algo);
         let sig = sig::Sig::new(sig_algo).expect("Failed to create Sig object");
@@ -69,7 +69,7 @@ pub fn trade_shared_secret(person_a: &mut Persona, person_b: &mut Persona, kem_a
         return
     }
 
-    //Generate KEM keypair for exchange
+    // Generate KEM keypair for exchange
     let kem_algo = get_kem_algorithm(kem_algo);
     let kem_algo = kem::Kem::new(kem_algo).expect("Failed to create KEM");
     let (kem_pk, kem_sk) = kem_algo.keypair().expect("Failed to generate KEM keypair");
