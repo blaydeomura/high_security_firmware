@@ -18,10 +18,13 @@ pub enum Commands {
         // Name of the person
         #[arg(short, long)]
         name: String,
-        
-        // Encryption key to secure the key pair
+
         #[arg(short, long)]
-        encryption_key: String,
+        cs_id: usize
+
+        // // Encryption key to secure the key pair
+        // #[arg(short, long)]
+        // encryption_key: String,
     },
     // Removes an existing key pair
     Remove {
