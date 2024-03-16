@@ -31,6 +31,10 @@ impl Persona {
             sk
         }
     }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
 }
 
 // TODO: throw an error if no strings match
