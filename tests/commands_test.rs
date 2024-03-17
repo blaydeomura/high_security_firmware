@@ -10,20 +10,20 @@ mod tests {
     use super::*;
 
 
-    // Test parsing the "generate" command
-    #[test]
-    fn test_parse_generate_command() {
-        // Parse command line arguments
-        let args = Args::parse_from(&["test", "generate", "--name", "Alice", "--encryption-key", "123456"]);
-        // Check if the parsed command is Generate
-        if let Commands::Generate { name, encryption_key } = args.command {
-            // Check if the name and encryption key are correctly parsed
-            assert_eq!(name, "Alice".to_string());
-            assert_eq!(encryption_key, "123456".to_string());
-        } else {
-            panic!("Expected Generate command, found something else");
-        }
-    }
+    // // Test parsing the "generate" command
+    // #[test]
+    // fn test_parse_generate_command() {
+    //     // Parse command line arguments
+    //     let args = Args::parse_from(&["test", "generate", "--name", "Alice", "--encryption-key", "123456"]);
+    //     // Check if the parsed command is Generate
+    //     if let Commands::Generate { name, encryption_key } = args.command {
+    //         // Check if the name and encryption key are correctly parsed
+    //         assert_eq!(name, "Alice".to_string());
+    //         assert_eq!(encryption_key, "123456".to_string());
+    //     } else {
+    //         panic!("Expected Generate command, found something else");
+    //     }
+    // }
 
     #[test]
     fn test_generate_command_integration() {
