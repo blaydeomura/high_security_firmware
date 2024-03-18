@@ -1,3 +1,99 @@
+use oqs::sig::{self, Sig, Signature};
+use sha2::{Digest, Sha256};
+use std::fs::File;
+use std::io::{self, Read};
+use crate::wallet::Wallet;
+use crate::persona::get_sig_algorithm;
+use std::fs;
+use std::path::Path;
+use std::io::Write;
+use hex;
+
+pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<Signature> {
+    // Get persona from wallet
+    let persona = wallet.get_persona(name)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
+
+    // Choose correct algorithm based on persona and cryptographic suite ID they used
+    let algorithm = get_sig_algorithm(persona.get_cs_id());
+    let sig_algo = Sig::new(algorithm)
+        .expect("Failed to create Sig object");
+
+    // Get the file and hash it using SHA-256
+    let mut file = File::open(file_path)?;
+    let mut hasher = Sha256::new();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+    hasher.update(&buffer);
+    let hash_result = hasher.finalize();
+
+    // Sign the hash
+    let signature = sig_algo.sign(hash_result.as_slice(), persona.get_sk())
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
+
+    // Generate a unique file name based on persona name and a hash of the original file name
+    let file_name_hash = {
+        let mut hasher = Sha256::new();
+        hasher.update(Path::new(file_path).file_name().unwrap().to_string_lossy().as_bytes());
+        hasher.finalize()
+    };
+    let original_file_name = Path::new(file_path).file_name().unwrap().to_string_lossy();
+    let signature_file_name = format!("{}_{}.sig", name, original_file_name);
+    
+    // Write the signature to a file in the "signatures" directory
+    let signature_dir = "signatures";
+    if !Path::new(signature_dir).exists() {
+        fs::create_dir(signature_dir)?;
+    }
+    let signature_file_path = Path::new(signature_dir).join(signature_file_name);
+    let mut signature_file = File::create(&signature_file_path)?;
+    // Serialize the signature into bytes using serde
+    let serialized_signature = serde_json::to_vec(&signature)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e)))?;
+    signature_file.write_all(&serialized_signature)?;
+
+    Ok(signature)
+}
+
+
+
+
+pub fn verify(name: &str, file_path: &str, signature_bytes: &[u8], wallet: &Wallet) -> io::Result<()> {
+    // get correct person from wallet
+    let persona = wallet.get_persona(name)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
+
+    // choose correc algo according to persona
+    let algorithm = get_sig_algorithm(persona.get_cs_id());
+    let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
+
+    // hash the same file and repeat process
+    let mut file = File::open(file_path)?;
+    let mut hasher = Sha256::new();
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+    hasher.update(&buffer);
+    let hash_result = hasher.finalize();
+
+    // Correctly convert signature_bytes into a SignatureRef
+    let signature_ref = sig_algo.signature_from_bytes(signature_bytes)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature bytes"))?;
+
+
+    sig_algo.verify(hash_result.as_slice(), signature_ref, persona.get_pk())
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e)))?;
+
+    Ok(())
+}
+
+
+
+
+
+
+
+
+
 // use std::fs;
 // use std::fs::File;                
 // use std::io::Read;                
