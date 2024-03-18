@@ -1,78 +1,75 @@
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use std::fs::{self, File};
-//     use std::io::Write;
+#[cfg(test)]
+mod tests {
+    use std::fs::File;
+    use std::io::Write;
+    use std::time::Instant;
+    use rust_cli::file_ops::{hash_file, sign_file, verify_file};
+    use rust_cli::wallet::Wallet;
 
-//     // Import hash_file function from your file_ops module
-//     use rust_cli::file_ops::hash_file;
+    const TEST_FILE: &str = "file_test_2.txt"; // Use the existing test file
 
-//     #[test]
-// fn test_hash_file_blake3() {
-//     let filename = "file_test.txt";
-//     let expected_hash = "92b73e3644c76d24adc54ff5a385fc7bf64def1a795dbcdbee3c729b148a91e1"; // Expected hash for the given content
-//     let content = "This is a hashing test.\n";
+    fn create_test_file() {
+        let mut file = File::create(TEST_FILE).expect("Failed to create test file");
+        file.write_all(b"test data").expect("Failed to write to test file");
+    }
 
-//     create_test_file(filename, content);
+    fn remove_test_file() {
+        std::fs::remove_file(TEST_FILE).expect("Failed to remove test file");
+    }
 
-//     if let Ok(hash) = hash_file(filename, "blake3") {
-//         assert_eq!(hash, expected_hash);
-//     } else {
-//         panic!("Failed to hash file using BLAKE3 algorithm.");
-//     }
+    #[test]
+    fn test_hash_file_blake3() {
+        create_test_file();
+        let start_time = Instant::now();
+        hash_file(TEST_FILE, "blake3");
+        let elapsed_time = start_time.elapsed();
+        println!("BLAKE3 Hash Time: {:?}", elapsed_time);
+        remove_test_file();
+    }
 
-//     fs::remove_file(filename).unwrap();
-// }
+    #[test]
+    fn test_hash_file_sha256() {
+        create_test_file();
+        let start_time = Instant::now();
+        hash_file(TEST_FILE, "sha256");
+        let elapsed_time = start_time.elapsed();
+        println!("SHA-256 Hash Time: {:?}", elapsed_time);
+        remove_test_file();
+    }
 
-// #[test]
-// fn test_hash_file_sha256() {
-//     let filename = "file_test.txt";
-//     let expected_hash = "1d5e549a6da0a996b931324ad741d1a5724f5151f098e78c6378c5b6359be597"; // Expected hash for the given content
-//     let content = "This is a hashing test.\n";
+    #[test]
+    fn test_hash_file_sha384() {
+        create_test_file();
+        let start_time = Instant::now();
+        hash_file(TEST_FILE, "sha384");
+        let elapsed_time = start_time.elapsed();
+        println!("SHA-384 Hash Time: {:?}", elapsed_time);
+        remove_test_file();
+    }
 
-//     create_test_file(filename, content);
+    #[test]
+    fn test_hash_file_sha512() {
+        create_test_file();
+        let start_time = Instant::now();
+        hash_file(TEST_FILE, "sha512");
+        let elapsed_time = start_time.elapsed();
+        println!("SHA-512 Hash Time: {:?}", elapsed_time);
+        remove_test_file();
+    }
 
-//     if let Ok(hash) = hash_file(filename, "sha256") {
-//         assert_eq!(hash, expected_hash);
-//     } else {
-//         panic!("Failed to hash file using SHA-256 algorithm.");
-//     }
+    #[test]
+    fn test_sign_file() {
+        let wallet = Wallet::new(); // Provide appropriate wallet initialization
+        let encryption_key = b"encryption_key"; // Provide appropriate encryption key
+        let signature = sign_file(&wallet, "name", TEST_FILE, encryption_key);
+        assert!(!signature.is_empty());
+    }
 
-//     fs::remove_file(filename).unwrap();
-// }
-
-// // Uncomment and add tests for other hash algorithms as needed
-
-// // #[test]
-// // fn test_hash_file_sha384() {
-// //     let filename = "file_test.txt";
-// //     let expected_hash = "7b39d81d5b97c243951b8db0a83389da98a40ff5eb81e4355aa0c2a10f83473e554245b375f82b6990b4e65cf8b39396"; // Expected hash for the given content
-// //     let content = "This is a hashing test.\n";
-
-// //     create_test_file(filename, content);
-
-// //     if let Ok(hash) = hash_file(filename, "sha384") {
-// //         assert_eq!(hash, expected_hash);
-// //     } else {
-// //         panic!("Failed to hash file using SHA-384 algorithm.");
-// //     }
-
-// //     fs::remove_file(filename).unwrap();
-// // }
-
-// #[test]
-// fn test_hash_file_sha512() {
-//     let filename = "file_test.txt";
-//     let expected_hash = "e0d46ba9a98ff4ed496587b174447ef8c64d1d4e6a1fd0031bc0a1059db1ad5cea0ea922f86990f80309acc9a9abcf8098dfdf4849f15275906a25ae62e40c44"; // Expected hash for the given content
-//     let content = "This is a hashing test.\n";
-
-//     create_test_file(filename, content);
-
-//     if let Ok(hash) = hash_file(filename, "sha512") {
-//         assert_eq!(hash, expected_hash);
-//     } else {
-//         panic!("Failed to hash file using SHA-512 algorithm.");
-//     }
-
-//     fs::remove_file(filename).unwrap();
-// }
+    #[test]
+    fn test_verify_file() {
+        let wallet = Wallet::new(); // Provide appropriate wallet initialization
+        let encryption_key = b"encryption_key"; // Provide appropriate encryption key
+        let signature = sign_file(&wallet, "name", TEST_FILE, encryption_key);
+        verify_file(&wallet, "name", TEST_FILE, &signature);
+    }
+}

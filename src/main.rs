@@ -38,4 +38,6 @@ fn main() {
             file_ops::verify_file(&wallet, &name, &filename, &signature);
         },
     }
+    
+
 }

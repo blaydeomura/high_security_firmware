@@ -1,4 +1,4 @@
-// Import necessary modules for testing
+//Import necessary modules for testing
 use clap::Parser;
 use rust_cli::commands::{Args, Commands};
 use rust_cli::file_ops;
@@ -104,8 +104,6 @@ mod tests {
         // Add assertions to verify signature
     }
 
-
-    // Add more tests for other functionalities...
 
     // Error Handling Tests
     // Test error handling for file I/O operations
