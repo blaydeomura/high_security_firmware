@@ -1,9 +1,14 @@
+// use clap::Parser;
+// use rust_cli::wallet;
+// use rust_cli::wallet::Wallet;
+// use rust_cli::commands::{Args, Commands};
+// use rust_cli::file_ops;
+// use rust_cli::persona::Persona;
 use clap::Parser;
-use rust_cli::wallet;
 use rust_cli::wallet::Wallet;
 use rust_cli::commands::{Args, Commands};
-use rust_cli::file_ops;
 use rust_cli::persona::Persona;
+use rust_cli::file_ops::{sign, verify};
 
 fn main() {
     let args = Args::parse();
@@ -25,16 +30,22 @@ fn main() {
             // file_ops::hash_file(&filename, &algorithm);
         },
         Commands::Sign { name, filename } => {
-            // Assuming you have the encryption key available, possibly asking the user for it
-            // println!("Enter the encryption key for {}: ", name);
-            // let mut encryption_key = String::new();
-            // std::io::stdin().read_line(&mut encryption_key).expect("Failed to read line");
-            // let encryption_key = encryption_key.trim(); // Trim newline characters
-
-            // file_ops::sign_file(&wallet, &name, &filename, encryption_key.as_bytes());
+            let result = sign(&name, &filename, &wallet);
+            match result {
+                Ok(_) => {
+                    println!("Signature created successfully.");
+                },
+                Err(e) => println!("Error signing file: {}", e),
+            }
         },
         Commands::Verify { name, filename, signature } => {
-            // file_ops::verify_file(&wallet, &name, &filename, &signature);
-        }
+            // Directly pass the signature file path to the verify function
+            let result = verify(&name, &filename, &signature, &wallet);
+            match result {
+                Ok(_) => println!("Verification successful."),
+                Err(e) => println!("Verification failed: {}", e),
+            }
+        },
+        
     }
 }

@@ -35,10 +35,25 @@ impl Persona {
     pub fn get_name(&self) -> String {
         self.name.clone()
     }
+
+    // Getter for the public key
+    pub fn get_pk(&self) -> &oqs::sig::PublicKey {
+        &self.pk
+    }
+
+    // Getter for the secret key
+    pub fn get_sk(&self) -> &oqs::sig::SecretKey {
+        &self.sk
+    }
+
+    // Getter for the cs_id
+    pub fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
 }
 
 // TODO: throw an error if no strings match
-fn get_sig_algorithm(cs_id: usize) -> sig::Algorithm {
+pub fn get_sig_algorithm(cs_id: usize) -> sig::Algorithm {
     match cs_id {
         1 => sig::Algorithm::Dilithium2,
         2 => sig::Algorithm::Dilithium2,

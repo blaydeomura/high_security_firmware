@@ -2,20 +2,25 @@
 // Wallet contents are stored in JSON format
 // Operations include loading wallet from file, saving wallet to file, and adding and removing keys
 
-use std::fs;
-use std::fs::File;
-use std::io::Read;                
-use std::path::{Path, PathBuf};                         
+// use std::fs;
+// use std::fs::File;
+// use std::io::Read;                
+// use std::path::{Path, PathBuf};                         
+// use std::collections::HashMap;
+// use serde::{Deserialize, Serialize};
+// use base64::{Engine as _, engine::general_purpose};
+// use aes_gcm::{Aes256Gcm, Nonce, KeyInit}; 
+// use aes_gcm::aead::Aead; 
+// use aes_gcm::aead::generic_array::GenericArray;
+// use ::rand::Rng;
+// use ::rand::rngs::OsRng;
+// use ring::signature::{Ed25519KeyPair, KeyPair};
+// use super::error::MyError;
+// use super::persona::Persona;
+use std::fs;            
+use std::path::Path;                         
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-use base64::{Engine as _, engine::general_purpose};
-use aes_gcm::{Aes256Gcm, Nonce, KeyInit}; 
-use aes_gcm::aead::Aead; 
-use aes_gcm::aead::generic_array::GenericArray;
-use ::rand::Rng;
-use ::rand::rngs::OsRng;
-use ring::signature::{Ed25519KeyPair, KeyPair};
-use super::error::MyError;
 use super::persona::Persona;
 
 // Wallet contains a hashmap with names of individuals and associated persona objects
@@ -59,6 +64,10 @@ impl Wallet {
         let path_str = format!("wallet/{}.json", name);
         fs::remove_file(path_str)?;
         Ok(())
+    }
+
+    pub fn get_persona(&self, name: &str) -> Option<&Persona> {
+        self.keys.get(name)
     }
 
     // // Save contents of wallet to JSON file
