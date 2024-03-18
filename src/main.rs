@@ -9,7 +9,6 @@ use rust_cli::wallet::Wallet;
 use rust_cli::commands::{Args, Commands};
 use rust_cli::persona::Persona;
 use rust_cli::file_ops::{sign, verify};
-use std::fs;
 
 fn main() {
     let args = Args::parse();
@@ -33,23 +32,20 @@ fn main() {
         Commands::Sign { name, filename } => {
             let result = sign(&name, &filename, &wallet);
             match result {
-                Ok(signature) => {
-                    // Assuming you want to save the signature to a file
-                    let signature_path = format!("{}.sig", filename);
-                    fs::write(signature_path, &signature).expect("Unable to write signature");
+                Ok(_) => {
                     println!("Signature created successfully.");
-                }
+                },
                 Err(e) => println!("Error signing file: {}", e),
             }
         },
         Commands::Verify { name, filename, signature } => {
-            // Assuming `signature` is the path to the signature file
-            let signature_data = fs::read(&signature).expect("Failed to read signature file");
-            let result = verify(&name, &filename, &signature_data, &wallet);
+            // Directly pass the signature file path to the verify function
+            let result = verify(&name, &filename, &signature, &wallet);
             match result {
                 Ok(_) => println!("Verification successful."),
                 Err(e) => println!("Verification failed: {}", e),
             }
-        }
+        },
+        
     }
 }
