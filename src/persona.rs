@@ -1,8 +1,3 @@
-// cs_id: 1 | sig: Dilithium2 | hash: sha256
-// cs_id: 2 | sig: Dilithium2 | hash: sha512
-// cs_id: 3 | sig: Falcon512 | hash: sha256
-// cs_id: 4 | sig: Falcon512 | hash: sha512
-
 use oqs::sig;
 use serde::{Serialize, Deserialize};
 
@@ -49,6 +44,17 @@ impl Persona {
     // Getter for the cs_id
     pub fn get_cs_id(&self) -> usize {
         self.cs_id
+    }
+}
+
+impl Clone for Persona {
+    fn clone(&self) -> Self {
+        Persona {
+            name: self.name.clone(),
+            cs_id: self.cs_id,
+            pk: self.pk.clone(),
+            sk: self.sk.clone(),
+        }
     }
 }
 

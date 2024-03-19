@@ -1,78 +1,29 @@
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use std::fs::{self, File};
-//     use std::io::Write;
+// Import the necessary modules and types
+use rust_cli::wallet::Wallet;
+use rust_cli::file_ops::{sign, verify};
+use rust_cli::persona::Persona;
+use std::path::Path;
 
-//     // Import hash_file function from your file_ops module
-//     use rust_cli::file_ops::hash_file;
+#[test]
+fn test_file_operations() {
+    // Create a new Wallet instance
+    let mut wallet = Wallet::new();
 
-//     #[test]
-// fn test_hash_file_blake3() {
-//     let filename = "file_test.txt";
-//     let expected_hash = "92b73e3644c76d24adc54ff5a385fc7bf64def1a795dbcdbee3c729b148a91e1"; // Expected hash for the given content
-//     let content = "This is a hashing test.\n";
+    // Create a test persona for signing
+    let test_persona = Persona::new("test_persona".to_string(), 1); // Change the cs_id as needed
 
-//     create_test_file(filename, content);
+    // Add the test persona to the wallet
+    wallet.save_persona(test_persona.clone()).expect("Failed to save persona to wallet");
 
-//     if let Ok(hash) = hash_file(filename, "blake3") {
-//         assert_eq!(hash, expected_hash);
-//     } else {
-//         panic!("Failed to hash file using BLAKE3 algorithm.");
-//     }
+    // Path to the file to sign
+    let file_path = "files/file_test_2.txt";
 
-//     fs::remove_file(filename).unwrap();
-// }
+    // Sign the file using the persona from the wallet
+    sign(&test_persona.get_name(), file_path, &wallet).expect("Failed to generate signature");
 
-// #[test]
-// fn test_hash_file_sha256() {
-//     let filename = "file_test.txt";
-//     let expected_hash = "1d5e549a6da0a996b931324ad741d1a5724f5151f098e78c6378c5b6359be597"; // Expected hash for the given content
-//     let content = "This is a hashing test.\n";
+    // Path to the signature file
+    let signature_file_path = format!("signatures/{}_{}.sig", test_persona.get_name(), Path::new(file_path).file_name().unwrap().to_str().unwrap());
 
-//     create_test_file(filename, content);
-
-//     if let Ok(hash) = hash_file(filename, "sha256") {
-//         assert_eq!(hash, expected_hash);
-//     } else {
-//         panic!("Failed to hash file using SHA-256 algorithm.");
-//     }
-
-//     fs::remove_file(filename).unwrap();
-// }
-
-// // Uncomment and add tests for other hash algorithms as needed
-
-// // #[test]
-// // fn test_hash_file_sha384() {
-// //     let filename = "file_test.txt";
-// //     let expected_hash = "7b39d81d5b97c243951b8db0a83389da98a40ff5eb81e4355aa0c2a10f83473e554245b375f82b6990b4e65cf8b39396"; // Expected hash for the given content
-// //     let content = "This is a hashing test.\n";
-
-// //     create_test_file(filename, content);
-
-// //     if let Ok(hash) = hash_file(filename, "sha384") {
-// //         assert_eq!(hash, expected_hash);
-// //     } else {
-// //         panic!("Failed to hash file using SHA-384 algorithm.");
-// //     }
-
-// //     fs::remove_file(filename).unwrap();
-// // }
-
-// #[test]
-// fn test_hash_file_sha512() {
-//     let filename = "file_test.txt";
-//     let expected_hash = "e0d46ba9a98ff4ed496587b174447ef8c64d1d4e6a1fd0031bc0a1059db1ad5cea0ea922f86990f80309acc9a9abcf8098dfdf4849f15275906a25ae62e40c44"; // Expected hash for the given content
-//     let content = "This is a hashing test.\n";
-
-//     create_test_file(filename, content);
-
-//     if let Ok(hash) = hash_file(filename, "sha512") {
-//         assert_eq!(hash, expected_hash);
-//     } else {
-//         panic!("Failed to hash file using SHA-512 algorithm.");
-//     }
-
-//     fs::remove_file(filename).unwrap();
-// }
+    // Verify the signature
+    verify(&test_persona.get_name(), file_path, &signature_file_path, &wallet).expect("Failed to verify signature");
+}
