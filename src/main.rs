@@ -26,9 +26,6 @@ fn main() {
             // let encryption_key_bytes = encryption_key.as_bytes();
             // wallet::access_key(&wallet, &name, encryption_key_bytes);
         },
-        Commands::HashFile { filename, algorithm } => {
-            // file_ops::hash_file(&filename, &algorithm);
-        },
         Commands::Sign { name, filename } => {
             let result = sign(&name, &filename, &wallet);
             match result {
@@ -38,14 +35,6 @@ fn main() {
                 Err(e) => println!("Error signing file: {}", e),
             }
         },
-        // Commands::Verify { name, filename, signature } => {
-        //     // Directly pass the signature file path to the verify function
-        //     let result = verify(&name, &filename, &signature, &wallet);
-        //     match result {
-        //         Ok(_) => println!("Verification successful."),
-        //         Err(e) => println!("Verification failed: {}", e),
-        //     }
-        // },
         Commands::Verify { name, filename, signature } => {
             // Directly pass the signature file path to the verify function
             let result = verify(&name, &filename, &signature, &wallet);
