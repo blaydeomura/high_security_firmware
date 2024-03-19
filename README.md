@@ -14,6 +14,27 @@
 ## Usage
 - Command Line Options: The program uses the Clap library for parsing command-line arguments. The available options are as follows:
 
+
+# New program below
+* cargo run -- generate --name <Name of persona> --cs-id <1 through 4 CS id>
+* cargo run sign --name <Name of persona> --filename files/<name of file to hash>
+* cargo run verify --name <Name of persona> --filename files/<name of file to hash> --signature signatures/<signature of hashed file>
+* cargo run -- remove --name <name of persona>
+
+## example
+* cargo run -- generate --name bob --cs-id 4
+* cargo run sign --name bob --filename files/file_test.txt
+* cargo run verify --name bob --filename files/file_test.txt --signature signatures/bob_file_test.txt.sig
+
+
+
+
+
+
+
+
+# old is below
+
 - Generate: -- generate - Generates a new key pair for a given name and encryption key.
     --name: Name of the person.
     --encryption-key: Encryption key to secure the key pair.

@@ -26,9 +26,6 @@ fn main() {
             // let encryption_key_bytes = encryption_key.as_bytes();
             // wallet::access_key(&wallet, &name, encryption_key_bytes);
         },
-        Commands::HashFile { filename, algorithm } => {
-            // file_ops::hash_file(&filename, &algorithm);
-        },
         Commands::Sign { name, filename } => {
             let result = sign(&name, &filename, &wallet);
             match result {

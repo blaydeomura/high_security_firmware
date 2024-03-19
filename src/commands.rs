@@ -21,10 +21,6 @@ pub enum Commands {
 
         #[arg(short, long)]
         cs_id: usize
-
-        // // Encryption key to secure the key pair
-        // #[arg(short, long)]
-        // encryption_key: String,
     },
     // Removes an existing key pair
     Remove {
@@ -42,22 +38,11 @@ pub enum Commands {
         #[arg(short, long)]
         encryption_key: String,
     },
-    // Hashes a provided file with the specfified algorithm
-    HashFile {
-        // Name of the file to be hashed
-        #[arg(short, long)]
-        filename: String,
-
-        /// The hashing algorithm to use (e.g., blake3, sha256)
-        #[arg(short, long)]
-        algorithm: String,
-    },
     // Signs a file with a provided persons private key
     Sign {
     // Name of the person
     #[arg(short, long)]
     name: String,
-    
     // File to sign
     #[arg(short, long)]
     filename: String,

@@ -6,74 +6,93 @@ use crate::wallet::Wallet;
 use crate::persona::get_sig_algorithm;
 use std::fs;
 use std::path::Path;
-use hex;
+use sha2::Sha512;
 
 // https://docs.rs/oqs/latest/oqs/sig/struct.Sig.html 
 
+//cargo run sign --name blayde --filename files/file_test.txt
+
 pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
-    // get the correct persona object
+    // get the correct persona 
     let persona = wallet.get_persona(name)
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
 
-    // get correct algo from persona and ciphersuite id
+    // get the algo with the corresponding persona
     let algorithm = get_sig_algorithm(persona.get_cs_id());
-    let sig_algo = Sig::new(algorithm)
-        .expect("Failed to create Sig object");
+    let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
 
-    // hash the desired file
+    // read the file
     let mut file = File::open(file_path)?;
-    let mut hasher = Sha256::new();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
-    hasher.update(&buffer);
-    let hash_result = hasher.finalize();
 
-    // sign the file
-    let signature = sig_algo.sign(hash_result.as_slice(), persona.get_sk())
+    // hash the file's content and convert the result to Vec<u8> for uniform handling
+    let hash_result_vec: Vec<u8> = match persona.get_cs_id() {
+        1 | 3 => {
+            let mut hasher = Sha256::new();
+            hasher.update(&buffer);
+            hasher.finalize().to_vec() // Convert GenericArray to Vec<u8>
+        },
+        2 | 4 => {
+            let mut hasher = Sha512::new();
+            hasher.update(&buffer);
+            hasher.finalize().to_vec() // Convert GenericArray to Vec<u8>
+        },
+        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
+    };
+
+    // signing
+    let signature = sig_algo.sign(&hash_result_vec, persona.get_sk())
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 
-    // convert signature to hex string for storage
-    let signature_hex = hex::encode(signature);
-
-    // write the hex-encoded signature to a file
+    // directly write the signature bytes to a file
     let signature_file_name = format!("{}_{}.sig", name, Path::new(file_path).file_name().unwrap().to_string_lossy());
     let signature_dir = "signatures";
-    fs::create_dir_all(signature_dir)?; // Create directory if it doesn't exist
+    fs::create_dir_all(signature_dir)?;
     let signature_file_path = Path::new(signature_dir).join(signature_file_name);
-    fs::write(signature_file_path, signature_hex.as_bytes())?;
+    fs::write(signature_file_path, &signature)?;
 
     Ok(())
 }
 
 
 pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &Wallet) -> io::Result<()> {
-    // get correct persona value
+    // get the correct persona
     let persona = wallet.get_persona(name)
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
 
-    // get the algorithm used by persona and corresponding cs_id
+    // get the correct corresponding algo based on persona
     let algorithm = get_sig_algorithm(persona.get_cs_id());
     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
 
-    // Directly read and decode the signature from the provided file path
-    let signature_hex = fs::read_to_string(signature_file_path)?;
-    let signature_bytes = hex::decode(signature_hex)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, format!("Failed to decode signature: {}", e)))?;
+    // read the signature bytes from the file
+    let signature_bytes = std::fs::read(signature_file_path)?;
 
-    // Hash the file's content as done in the sign function
+    // hash the file's content using the same hash function as was used during signing
     let mut file = File::open(file_path)?;
-    let mut hasher = Sha256::new();
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
-    hasher.update(&buffer);
-    let hash_result = hasher.finalize();
 
-    // Attempt to convert the signature bytes into a usable format for verification
+    let hash_result_vec: Vec<u8> = match persona.get_cs_id() {
+        1 | 3 => {
+            let mut hasher = Sha256::new();
+            hasher.update(&buffer);
+            hasher.finalize().to_vec() // convert to Vec<u8> for uniform handling
+        },
+        2 | 4 => {
+            let mut hasher = Sha512::new();
+            hasher.update(&buffer);
+            hasher.finalize().to_vec() // convert to Vec<u8> for uniform handling
+        },
+        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
+    };
+
+    // convert raw signature bytes into a SignatureRef for verification
     let signature_ref = sig_algo.signature_from_bytes(&signature_bytes)
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature bytes"))?;
 
-    // Perform the verification
-    sig_algo.verify(hash_result.as_slice(), signature_ref, persona.get_pk())
+    // perform the verification
+    sig_algo.verify(&hash_result_vec, signature_ref, persona.get_pk())
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e)))?;
 
     Ok(())
@@ -84,34 +103,117 @@ pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &W
 
 
 
-// pub fn hash_file(filename: &str, algorithm: &str) {
-//     let path = Path::new(filename);
-//     let mut file = match File::open(&path) {
-//         Err(why) => panic!("Couldn't open {}: {}", path.display(), why),
-//         Ok(file) => file,
+
+
+// pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
+//     let persona = wallet.get_persona(name)
+//         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
+
+//     let algorithm = get_sig_algorithm(persona.get_cs_id());
+//     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
+
+//     let mut file = File::open(file_path)?;
+//     let mut buffer = Vec::new();
+//     file.read_to_end(&mut buffer)?;
+
+//     // Choose the hashing algorithm based on the cs_id
+//     let hash_result = match persona.get_cs_id() {
+//         1 | 3 => {
+//             let mut hasher = Sha256::new();
+//             hasher.update(&buffer);
+//             hasher.finalize()
+//         },
+//         2 | 4 => {
+//             let mut hasher = Sha512::new();
+//             hasher.update(&buffer);
+//             hasher.finalize()
+//         },
+//         _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
 //     };
 
-//     let mut buffer = Vec::new();
-//     file.read_to_end(&mut buffer).expect("Couldn't read file");
+//     let signature = sig_algo.sign(hash_result.as_slice(), persona.get_sk())
+//         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 
-//     match algorithm.to_lowercase().as_str() {
-//         "blake3" => {
-//             let hash = blake3::hash(&buffer);
-//             println!("BLAKE3 Hash: {:?}", hash);
-//         },
-//         "sha256" => {
-//             let hash = Sha256::digest(&buffer);
-//             println!("SHA-256 Hash: {:x}", hash);
-//         },
-//         "sha384" => {
-//             let hash = Sha384::digest(&buffer);
-//             println!("SHA-384 Hash: {:x}", hash);
-//         },
-//         "sha512" => {
-//             let hash = Sha512::digest(&buffer);
-//             println!("SHA-512 Hash: {:x}", hash);
-//         },
-//         // Add other algorithms here...
-//         _ => println!("Unsupported algorithm. Please specify a valid algorithm."),
-//     }
+//     let signature_file_name = format!("{}_{}.sig", name, Path::new(file_path).file_name().unwrap().to_string_lossy());
+//     let signature_dir = "signatures";
+//     fs::create_dir_all(signature_dir)?;
+//     let signature_file_path = Path::new(signature_dir).join(signature_file_name);
+//     fs::write(signature_file_path, &signature)?;
+
+//     Ok(())
+// }
+
+
+
+
+
+
+
+
+// pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
+//     // find the correct persona from wallet
+//     let persona = wallet.get_persona(name)
+//         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
+
+//     // get the correct cipher suite id algorithm
+//     let algorithm = get_sig_algorithm(persona.get_cs_id());
+//     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
+
+//     // hash the file dependin gon cioher suite
+//     let mut file = File::open(file_path)?;
+//     let mut hasher = Sha256::new();
+//     let mut buffer = Vec::new();
+//     file.read_to_end(&mut buffer)?;
+//     hasher.update(&buffer);
+//     let hash_result = hasher.finalize();
+
+//     // sign the signature
+//     let signature = sig_algo.sign(hash_result.as_slice(), persona.get_sk())
+//         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
+
+//     // directly write the signature bytes to a file
+//     let signature_file_name = format!("{}_{}.sig", name, Path::new(file_path).file_name().unwrap().to_string_lossy());
+//     let signature_dir = "signatures";
+//     fs::create_dir_all(signature_dir)?;
+//     let signature_file_path = Path::new(signature_dir).join(signature_file_name);
+//     fs::write(signature_file_path, &signature)?;
+
+//     Ok(())
+// }
+
+
+
+// pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &Wallet) -> io::Result<()> {
+//     // get the correct persona
+//     let persona = wallet.get_persona(name)
+//         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
+
+//     // algorithm that corresponds to cipher suite
+//     let algorithm = get_sig_algorithm(persona.get_cs_id());
+//     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
+
+//     // get the signature file
+//     let signature_file_name = format!("{}_{}.sig", name, Path::new(file_path).file_name().unwrap().to_string_lossy());
+//     let signature_dir = "signatures";
+//     let signature_file_path = Path::new(signature_dir).join(signature_file_name);
+
+//     let signature_bytes = std::fs::read(signature_file_path)?;
+
+//     // correctly create a SignatureRef from the raw signature bytes
+//     let signature_ref = sig_algo.signature_from_bytes(&signature_bytes)
+//         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature bytes"))?;
+
+//     // hash file
+//     let mut file = File::open(file_path)?;
+//     let mut hasher = Sha256::new();
+//     let mut buffer = Vec::new();
+//     file.read_to_end(&mut buffer)?;
+//     hasher.update(&buffer);
+//     let hash_result = hasher.finalize();
+
+//     // verify
+//     sig_algo.verify(hash_result.as_slice(), signature_ref, persona.get_pk())
+//         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e)))?;
+
+//     Ok(())
 // }
