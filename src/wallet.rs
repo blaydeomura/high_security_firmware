@@ -32,10 +32,14 @@ pub struct Wallet {
 impl Wallet {
     // Load wallet from file, or create a new wallet file if none found
     pub fn new() -> Self {
-        let keys = Wallet::load_wallet("wallet");
-        Wallet {
-            keys: keys.unwrap()
-        }
+        let mut keys = HashMap::new();
+        // Initialize personas and add them to the wallet
+        let persona1 = Persona::new("test_persona".to_string(), 1);
+        keys.insert(persona1.get_name(), persona1);
+
+        // Add more personas as needed
+
+        Wallet { keys }
     }
 
     pub fn load_wallet(dir_path: &str) -> std::io::Result<HashMap<String, Persona>> {
