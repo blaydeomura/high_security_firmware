@@ -23,27 +23,30 @@ impl Wallet {
         }
     }
 
+    // Opens all persona files in wallet folder and loads them into hashmap
     pub fn load_wallet(dir_path: &str) -> std::io::Result<HashMap<String, Persona>> {
         let mut keys = HashMap::new();
         for entry in fs::read_dir(dir_path)? {
             let dir = entry?;
             let content = fs::read_to_string(dir.path())?;
-            let persona: Persona = serde_json::from_str(&content).unwrap();
+            let persona: Persona = serde_json::from_str(&content)?;
             keys.insert(persona.get_name(), persona);
         }
 
         Ok(keys)
     }
 
+    // Creates a new persona object, stores data in hashmap, serializes data to JSON
     pub fn save_persona(&mut self, persona: Persona) -> std::io::Result<()> {
         let path_str = format!("wallet/{}.json", persona.get_name());
         let path = Path::new(&path_str);
-        let serialized = serde_json::to_string(&persona)?;
+        let serialized = serde_json::to_string_pretty(&persona)?;
         fs::write(path, serialized)?;
         self.keys.insert(persona.get_name(), persona);
         Ok(())
     }
 
+    // Removes data from hashmap and deletes corresponding JSON file
     pub fn remove_persona(&mut self, name: &String) -> std::io::Result<()> {
         self.keys.remove(name);
         let path_str = format!("wallet/{}.json", name);
@@ -51,6 +54,7 @@ impl Wallet {
         Ok(())
     }
 
+    // Getter for name of persona
     pub fn get_persona(&self, name: &str) -> Option<&Persona> {
         self.keys.get(name)
     }

@@ -18,7 +18,7 @@ pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
 
     // get the algo with the corresponding persona
-    let algorithm = get_sig_algorithm(persona.get_cs_id());
+    let algorithm = get_sig_algorithm(persona.get_cs_id())?;
     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
 
     // read the file
@@ -62,7 +62,7 @@ pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &W
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
 
     // get the correct corresponding algo based on persona
-    let algorithm = get_sig_algorithm(persona.get_cs_id());
+    let algorithm = get_sig_algorithm(persona.get_cs_id()).unwrap();
     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
 
     // read the signature bytes from the file
@@ -97,7 +97,6 @@ pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &W
 
     Ok(())
 }
-
 
 
 
