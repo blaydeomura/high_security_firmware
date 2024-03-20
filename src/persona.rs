@@ -65,7 +65,7 @@ impl Clone for Persona {
     }
 }
 
-pub fn get_sig_algorithm(cs_id: usize) -> sig::Algorithm {
+pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error> {
     match cs_id {
         1 | 2 => Ok(sig::Algorithm::Dilithium2),
         3 | 4 => Ok(sig::Algorithm::Falcon512),
