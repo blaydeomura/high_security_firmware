@@ -5,10 +5,8 @@ use crate::wallet::Wallet;
 use crate::persona::{get_sig_algorithm, get_hash};
 use std::fs;
 use std::path::Path;
-
-// https://docs.rs/oqs/latest/oqs/sig/struct.Sig.html 
-
-//cargo run sign --name blayde --filename files/file_test.txt
+use std::io::ErrorKind;
+use crate::file_ops::io::Error;
 
 pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
     // get the correct persona 
@@ -69,6 +67,30 @@ pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &W
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e)))?;
 
     Ok(())
+}
+
+/// Removes the signature file associated with a given persona and file.
+pub fn remove_signature(signature_file_name: &str) -> io::Result<()> {
+
+    let signature_dir = "signatures/";
+    let signature_file_path = Path::new(signature_dir).join(&signature_file_name);
+    
+    println!("Attempting to remove file at path: {:?}", signature_file_path);
+
+
+
+    // Check if the file exists before attempting to remove it
+    if signature_file_path.exists() {
+        let path_to_remove = signature_file_path.clone();
+        // Attempt to remove the file
+        // fs::remove_file(signature_file_path).map_err(|e| {
+        fs::remove_file(path_to_remove).map_err(|e| {
+            eprintln!("Failed to remove signature file: {:?}. Error: {}", signature_file_path, e);
+            io::Error::new(ErrorKind::Other, format!("Failed to remove signature file: {}", e))
+        })
+    } else {
+        Err(io::Error::new(ErrorKind::NotFound, "Signature file does not exist"))
+    }
 }
 
 
