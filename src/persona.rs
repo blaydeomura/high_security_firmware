@@ -54,12 +54,21 @@ impl Persona {
     }
 }
 
-// Matches cs_id to correct signature algorithm
-pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error> {
+impl Clone for Persona {
+    fn clone(&self) -> Self {
+        Persona {
+            name: self.name.clone(),
+            cs_id: self.cs_id,
+            pk: self.pk.clone(),
+            sk: self.sk.clone(),
+        }
+    }
+}
+
+pub fn get_sig_algorithm(cs_id: usize) -> sig::Algorithm {
     match cs_id {
         1 | 2 => Ok(sig::Algorithm::Dilithium2),
         3 | 4 => Ok(sig::Algorithm::Falcon512),
         _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4"))
     }
 }
-
