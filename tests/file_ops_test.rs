@@ -1,59 +1,81 @@
+// Import the necessary modules and types
 use rust_cli::wallet::Wallet;
 use rust_cli::file_ops::{sign, verify};
-use std::io::Write;
-use tempfile::NamedTempFile;
+use rust_cli::persona::Persona;
+use std::path::Path;
+use criterion::{Criterion};
+use criterion::{criterion_group, criterion_main};
 
+
+// Unit test verifies the correctness of the sign and verify operations. 
+// It creates a new wallet, adds a test persona to it, signs a file using the persona, 
+// and then verifies the signature. If any of these steps fail, the test will fail.
 #[test]
-fn test_signature_generation_and_verification() {
-    let wallet = Wallet::new();
+fn test_file_operations() {
 
-    let mut temp_file = NamedTempFile::new().expect("Failed to create temporary file");
-    temp_file.write_all(b"Test data").expect("Failed to write to file");
-    let file_path = temp_file.path().to_str().expect("Failed to get file path");
+    // Create a new Wallet instance
+    let mut wallet = Wallet::new();
 
-    sign("test_persona", file_path, &wallet).expect("Failed to generate signature");
+    // Create a test persona for signing
+    let test_persona = Persona::new("test_persona".to_string(), 1); // Change the cs_id as needed
 
-    // Define a temporary signature file path for verification
-    let mut signature_temp_file = NamedTempFile::new().expect("Failed to create temporary signature file");
-    let signature_file_path = signature_temp_file.path().to_str().expect("Failed to get signature file path");
+    // Add the test persona to the wallet
+    wallet.save_persona(test_persona.clone()).expect("Failed to save persona to wallet");
 
-    verify("test_persona", file_path, signature_file_path, &wallet).expect("Failed to verify signature");
+    // Path to the file to sign
+    let file_path = "files/file_test_2.txt";
+
+    // Sign the file using the persona from the wallet
+    sign(&test_persona.get_name(), file_path, &wallet).expect("Failed to generate signature");
+
+    // Path to the signature file
+    let signature_file_path = format!("signatures/{}_{}.sig", test_persona.get_name(), Path::new(file_path).file_name().unwrap().to_str().unwrap());
+
+    // Verify the signature
+    verify(&test_persona.get_name(), file_path, &signature_file_path, &wallet).expect("Failed to verify signature");
 }
 
-#[test]
-fn test_signature_generation_performance() {
-    let wallet = Wallet::new();
+/*
+The criterion crate in Rust is specifically designed for benchmarking and measuring the performance of code. 
+It provides a framework for writing benchmarks and running them with statistical analysis.
 
-    let mut temp_file = NamedTempFile::new().expect("Failed to create temporary file");
-    let data = vec![0u8; 10 * 1024 * 1024]; // 10 MB
-    temp_file.write_all(&data).expect("Failed to write to file");
-    let file_path = temp_file.path().to_str().expect("Failed to get file path");
+I am using criterion to create benchmarks, it runs the code multiple times and collects data on the execution time of each iteration. 
+Then, it performs statistical analysis on the collected data to provide more accurate and meaningful measurements of performance, 
+including metrics such as average execution time, standard deviation, and confidence intervals.
 
-    let start_time = std::time::Instant::now();
-    sign("test_persona", file_path, &wallet).expect("Failed to generate signature");
-    let elapsed_time = start_time.elapsed();
+By using criterion benchmarks, you can make informed decisions about the performance characteristics of your code 
+and identify potential optimizations or regressions.
 
-    assert!(elapsed_time < std::time::Duration::from_secs(10), "Signature generation took too long");
+To run the criterion benchmarks performance tests simply type
+    "cargo bench" in the command line 
+*/
+
+// Criterion benchmarks performance test to measure the efficiency of the sign and verify operations using the criterion crate. 
+// Each benchmark function is defined to measure the execution time of the corresponding operation (sign or verify).
+// These benchmarks are useful for evaluating the performance of the algorithms over multiple iterations and providing statistical analysis on execution times. 
+
+fn sign_benchmark(c: &mut Criterion) {
+    let mut wallet = Wallet::new();
+    let test_persona = Persona::new("test_persona".to_string(), 1); // Change the cs_id as needed
+    wallet.save_persona(test_persona.clone()).expect("Failed to save persona to wallet");
+    let file_path = "files/file_test_2.txt";
+
+    c.bench_function("sign", |b| b.iter(|| sign(&test_persona.get_name(), file_path, &wallet)));
 }
 
-#[test]
-fn test_signature_verification_performance() {
-    let wallet = Wallet::new();
+fn verify_benchmark(c: &mut Criterion) {
+    let mut wallet = Wallet::new();
+    let test_persona = Persona::new("test_persona".to_string(), 1); // Change the cs_id as needed
+    wallet.save_persona(test_persona.clone()).expect("Failed to save persona to wallet");
+    let file_path = "files/file_test_2.txt";
+    let signature_file_path = format!("signatures/{}_{}.sig", test_persona.get_name(), Path::new(file_path).file_name().unwrap().to_str().unwrap());
+    sign(&test_persona.get_name(), file_path, &wallet).expect("Failed to generate signature");
 
-    let mut temp_file = NamedTempFile::new().expect("Failed to create temporary file");
-    let data = vec![0u8; 10 * 1024 * 1024]; // 10 MB
-    temp_file.write_all(&data).expect("Failed to write to file");
-    let file_path = temp_file.path().to_str().expect("Failed to get file path");
-
-    sign("test_persona", file_path, &wallet).expect("Failed to generate signature");
-
-    // Define a temporary signature file path for verification
-    let mut signature_temp_file = NamedTempFile::new().expect("Failed to create temporary signature file");
-    let signature_file_path = signature_temp_file.path().to_str().expect("Failed to get signature file path");
-
-    let start_time = std::time::Instant::now();
-    verify("test_persona", file_path, signature_file_path, &wallet).expect("Failed to verify signature");
-    let elapsed_time = start_time.elapsed();
-
-    assert!(elapsed_time < std::time::Duration::from_secs(10), "Signature verification took too long");
+    c.bench_function("verify", |b| b.iter(|| verify(&test_persona.get_name(), file_path, &signature_file_path, &wallet)));
 }
+
+// Define benchmark group
+criterion_group!(benches, sign_benchmark, verify_benchmark);
+
+// Specify entry point for running the benchmarks
+criterion_main!(benches);
