@@ -1,78 +1,59 @@
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use std::fs::{self, File};
-//     use std::io::Write;
+use rust_cli::wallet::Wallet;
+use rust_cli::file_ops::{sign, verify};
+use std::io::Write;
+use tempfile::NamedTempFile;
 
-//     // Import hash_file function from your file_ops module
-//     use rust_cli::file_ops::hash_file;
+#[test]
+fn test_signature_generation_and_verification() {
+    let wallet = Wallet::new();
 
-//     #[test]
-// fn test_hash_file_blake3() {
-//     let filename = "file_test.txt";
-//     let expected_hash = "92b73e3644c76d24adc54ff5a385fc7bf64def1a795dbcdbee3c729b148a91e1"; // Expected hash for the given content
-//     let content = "This is a hashing test.\n";
+    let mut temp_file = NamedTempFile::new().expect("Failed to create temporary file");
+    temp_file.write_all(b"Test data").expect("Failed to write to file");
+    let file_path = temp_file.path().to_str().expect("Failed to get file path");
 
-//     create_test_file(filename, content);
+    sign("test_persona", file_path, &wallet).expect("Failed to generate signature");
 
-//     if let Ok(hash) = hash_file(filename, "blake3") {
-//         assert_eq!(hash, expected_hash);
-//     } else {
-//         panic!("Failed to hash file using BLAKE3 algorithm.");
-//     }
+    // Define a temporary signature file path for verification
+    let mut signature_temp_file = NamedTempFile::new().expect("Failed to create temporary signature file");
+    let signature_file_path = signature_temp_file.path().to_str().expect("Failed to get signature file path");
 
-//     fs::remove_file(filename).unwrap();
-// }
+    verify("test_persona", file_path, signature_file_path, &wallet).expect("Failed to verify signature");
+}
 
-// #[test]
-// fn test_hash_file_sha256() {
-//     let filename = "file_test.txt";
-//     let expected_hash = "1d5e549a6da0a996b931324ad741d1a5724f5151f098e78c6378c5b6359be597"; // Expected hash for the given content
-//     let content = "This is a hashing test.\n";
+#[test]
+fn test_signature_generation_performance() {
+    let wallet = Wallet::new();
 
-//     create_test_file(filename, content);
+    let mut temp_file = NamedTempFile::new().expect("Failed to create temporary file");
+    let data = vec![0u8; 10 * 1024 * 1024]; // 10 MB
+    temp_file.write_all(&data).expect("Failed to write to file");
+    let file_path = temp_file.path().to_str().expect("Failed to get file path");
 
-//     if let Ok(hash) = hash_file(filename, "sha256") {
-//         assert_eq!(hash, expected_hash);
-//     } else {
-//         panic!("Failed to hash file using SHA-256 algorithm.");
-//     }
+    let start_time = std::time::Instant::now();
+    sign("test_persona", file_path, &wallet).expect("Failed to generate signature");
+    let elapsed_time = start_time.elapsed();
 
-//     fs::remove_file(filename).unwrap();
-// }
+    assert!(elapsed_time < std::time::Duration::from_secs(10), "Signature generation took too long");
+}
 
-// // Uncomment and add tests for other hash algorithms as needed
+#[test]
+fn test_signature_verification_performance() {
+    let wallet = Wallet::new();
 
-// // #[test]
-// // fn test_hash_file_sha384() {
-// //     let filename = "file_test.txt";
-// //     let expected_hash = "7b39d81d5b97c243951b8db0a83389da98a40ff5eb81e4355aa0c2a10f83473e554245b375f82b6990b4e65cf8b39396"; // Expected hash for the given content
-// //     let content = "This is a hashing test.\n";
+    let mut temp_file = NamedTempFile::new().expect("Failed to create temporary file");
+    let data = vec![0u8; 10 * 1024 * 1024]; // 10 MB
+    temp_file.write_all(&data).expect("Failed to write to file");
+    let file_path = temp_file.path().to_str().expect("Failed to get file path");
 
-// //     create_test_file(filename, content);
+    sign("test_persona", file_path, &wallet).expect("Failed to generate signature");
 
-// //     if let Ok(hash) = hash_file(filename, "sha384") {
-// //         assert_eq!(hash, expected_hash);
-// //     } else {
-// //         panic!("Failed to hash file using SHA-384 algorithm.");
-// //     }
+    // Define a temporary signature file path for verification
+    let mut signature_temp_file = NamedTempFile::new().expect("Failed to create temporary signature file");
+    let signature_file_path = signature_temp_file.path().to_str().expect("Failed to get signature file path");
 
-// //     fs::remove_file(filename).unwrap();
-// // }
+    let start_time = std::time::Instant::now();
+    verify("test_persona", file_path, signature_file_path, &wallet).expect("Failed to verify signature");
+    let elapsed_time = start_time.elapsed();
 
-// #[test]
-// fn test_hash_file_sha512() {
-//     let filename = "file_test.txt";
-//     let expected_hash = "e0d46ba9a98ff4ed496587b174447ef8c64d1d4e6a1fd0031bc0a1059db1ad5cea0ea922f86990f80309acc9a9abcf8098dfdf4849f15275906a25ae62e40c44"; // Expected hash for the given content
-//     let content = "This is a hashing test.\n";
-
-//     create_test_file(filename, content);
-
-//     if let Ok(hash) = hash_file(filename, "sha512") {
-//         assert_eq!(hash, expected_hash);
-//     } else {
-//         panic!("Failed to hash file using SHA-512 algorithm.");
-//     }
-
-//     fs::remove_file(filename).unwrap();
-// }
+    assert!(elapsed_time < std::time::Duration::from_secs(10), "Signature verification took too long");
+}
