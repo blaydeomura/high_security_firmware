@@ -6,6 +6,7 @@
 use std::io;
 use oqs::sig;
 use serde::{Serialize, Deserialize};
+use sha2::{Digest, Sha256, Sha512};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Persona {
@@ -70,5 +71,21 @@ pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error>
         1 | 2 => Ok(sig::Algorithm::Dilithium2),
         3 | 4 => Ok(sig::Algorithm::Falcon512),
         _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4"))
+    }
+}
+
+pub fn get_hash(cs_id: usize, buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
+    match cs_id {
+        1 | 3 => {
+            let mut hasher = Sha256::new();
+            hasher.update(&buffer);
+            Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
+        },
+        2 | 4 => {
+            let mut hasher = Sha512::new();
+            hasher.update(&buffer);
+            Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
+        },
+        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
     }
 }
