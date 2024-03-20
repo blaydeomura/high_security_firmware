@@ -66,6 +66,7 @@ impl Clone for Persona {
     }
 }
 
+// Generates correct signature algorithm based on cs_id
 pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error> {
     match cs_id {
         1 | 2 => Ok(sig::Algorithm::Dilithium2),
@@ -74,6 +75,7 @@ pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error>
     }
 }
 
+// Generates correct hash output based on cs_id
 pub fn get_hash(cs_id: usize, buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
     match cs_id {
         1 | 3 => {
@@ -86,6 +88,6 @@ pub fn get_hash(cs_id: usize, buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Erro
             hasher.update(&buffer);
             Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
         },
-        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
+        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4")),
     }
 }
