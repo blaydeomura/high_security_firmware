@@ -21,23 +21,18 @@ impl Wallet {
         // Initialize personas and add them to the wallet
         let persona1 = Persona::new("test_persona".to_string(), 1);
         keys.insert(persona1.get_name(), persona1);
-
-        // Add more personas as needed
-
         Wallet { keys }
     }
 
     // Opens all persona files in wallet folder and loads them into hashmap
-    pub fn load_wallet(dir_path: &str) -> std::io::Result<HashMap<String, Persona>> {
-        let mut keys = HashMap::new();
+    pub fn load_wallet(&mut self, dir_path: String) -> std::io::Result<()> {
         for entry in fs::read_dir(dir_path)? {
             let dir = entry?;
             let content = fs::read_to_string(dir.path())?;
             let persona: Persona = serde_json::from_str(&content)?;
-            keys.insert(persona.get_name(), persona);
+            self.keys.insert(persona.get_name(), persona);
         }
-
-        Ok(keys)
+        Ok(())
     }
 
     // Creates a new persona object, stores data in hashmap, serializes data to JSON

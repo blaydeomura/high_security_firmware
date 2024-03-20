@@ -7,6 +7,9 @@ use rust_cli::file_ops::{sign, verify};
 fn main() {
     let args = Args::parse();
     let mut wallet = Wallet::new();
+    wallet.load_wallet(String::from("wallet")).unwrap_or_else(|_| {
+        panic!("Error loading wallet");
+    });
 
     match args.command {
         Commands::Generate { name, cs_id } => {
@@ -36,8 +39,8 @@ fn main() {
             // let encryption_key_bytes = encryption_key.as_bytes();
             // wallet::access_key(&wallet, &name, encryption_key_bytes);
         },
-        Commands::Sign { name, filename } => {
-            let result = sign(&name, &filename, &wallet);
+        Commands::Sign { name, file } => {
+            let result = sign(&name, &file, &wallet);
             match result {
                 Ok(_) => {
                     println!("Signature created successfully.");
@@ -45,9 +48,9 @@ fn main() {
                 Err(e) => println!("Error signing file: {}", e),
             }
         },
-        Commands::Verify { name, filename, signature } => {
+        Commands::Verify { name, file, signature } => {
             // Directly pass the signature file path to the verify function
-            let result = verify(&name, &filename, &signature, &wallet);
+            let result = verify(&name, &file, &signature, &wallet);
             match result {
                 Ok(_) => println!("Verification successful."),
                 Err(e) => println!("Verification failed: {}", e),

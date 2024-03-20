@@ -1,12 +1,10 @@
 use oqs::sig::Sig;
-use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::{self, Read};
 use crate::wallet::Wallet;
-use crate::persona::get_sig_algorithm;
+use crate::persona::{get_sig_algorithm, get_hash};
 use std::fs;
 use std::path::Path;
-use sha2::Sha512;
 
 // https://docs.rs/oqs/latest/oqs/sig/struct.Sig.html 
 
@@ -27,19 +25,7 @@ pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
     file.read_to_end(&mut buffer)?;
 
     // hash the file's content and convert the result to Vec<u8> for uniform handling
-    let hash_result_vec: Vec<u8> = match persona.get_cs_id() {
-        1 | 3 => {
-            let mut hasher = Sha256::new();
-            hasher.update(&buffer);
-            hasher.finalize().to_vec() // Convert GenericArray to Vec<u8>
-        },
-        2 | 4 => {
-            let mut hasher = Sha512::new();
-            hasher.update(&buffer);
-            hasher.finalize().to_vec() // Convert GenericArray to Vec<u8>
-        },
-        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
-    };
+    let hash_result_vec: Vec<u8> = get_hash(persona.get_cs_id(), &buffer)?;
 
     // signing
     let signature = sig_algo.sign(&hash_result_vec, persona.get_sk())
@@ -54,7 +40,6 @@ pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
 
     Ok(())
 }
-
 
 pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &Wallet) -> io::Result<()> {
     // get the correct persona
@@ -73,19 +58,7 @@ pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &W
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
 
-    let hash_result_vec: Vec<u8> = match persona.get_cs_id() {
-        1 | 3 => {
-            let mut hasher = Sha256::new();
-            hasher.update(&buffer);
-            hasher.finalize().to_vec() // convert to Vec<u8> for uniform handling
-        },
-        2 | 4 => {
-            let mut hasher = Sha512::new();
-            hasher.update(&buffer);
-            hasher.finalize().to_vec() // convert to Vec<u8> for uniform handling
-        },
-        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
-    };
+    let hash_result_vec: Vec<u8> = get_hash(persona.get_cs_id(), &buffer)?;
 
     // convert raw signature bytes into a SignatureRef for verification
     let signature_ref = sig_algo.signature_from_bytes(&signature_bytes)
