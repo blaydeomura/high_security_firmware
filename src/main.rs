@@ -1,9 +1,3 @@
-// use clap::Parser;
-// use rust_cli::wallet;
-// use rust_cli::wallet::Wallet;
-// use rust_cli::commands::{Args, Commands};
-// use rust_cli::file_ops;
-// use rust_cli::persona::Persona;
 use clap::Parser;
 use rust_cli::wallet::Wallet;
 use rust_cli::commands::{Args, Commands};
@@ -12,7 +6,7 @@ use rust_cli::file_ops::{sign, verify};
 
 fn main() {
     let args = Args::parse();
-    let mut wallet = Wallet::new(); // Initialize or load wallet
+    let mut wallet = Wallet::new();
 
     match args.command {
         Commands::Generate { name, cs_id } => {
@@ -59,6 +53,5 @@ fn main() {
                 Err(e) => println!("Verification failed: {}", e),
             }
         },
-        
     }
 }
