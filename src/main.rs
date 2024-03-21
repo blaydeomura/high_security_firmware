@@ -1,6 +1,6 @@
 use clap::Parser;
 use rust_cli::wallet::Wallet;
-use rust_cli::commands::{Args, Commands};
+use rust_cli::commands::{self, Args, Commands};
 use rust_cli::persona::Persona;
 use rust_cli::file_ops::{remove_signature, sign, verify, list_signature_files, list_files};
 
@@ -70,5 +70,8 @@ fn main() {
                 println!("Failed to list signature files: {}", e);
             }
         },
+        Commands::Algorithms => {
+            commands::print_ids();
+        }
     }
 }

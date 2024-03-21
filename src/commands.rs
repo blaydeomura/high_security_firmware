@@ -30,12 +30,12 @@ pub enum Commands {
     },
     // Signs a file with a provided persons private key
     Sign {
-    // Name of the person
-    #[arg(short, long)]
-    name: String,
-    // File to sign
-    #[arg(short, long)]
-    file: String,
+        // Name of the person
+        #[arg(short, long)]
+        name: String,
+        // File to sign
+        #[arg(short, long)]
+        file: String,
     },
     // Verifies the signature of a file with a provided public key
     Verify {
@@ -58,4 +58,22 @@ pub enum Commands {
     },
     ListSignatures,
     ListFiles,
+    Algorithms
+}
+
+pub fn print_ids() {
+    println!();
+    println!("|------------ Supported  Algorithms ------------|");
+    println!("|-----------------------------------------------|");
+    println!("| ID  |   Signature Algorithm |   Hash Function |");
+    println!("|-----------------------------------------------|");
+    println!("| 1   |   Dilithium2          |   sha256        |");
+    println!("|-----------------------------------------------|");
+    println!("| 2   |   Dilithium2          |   sha512        |");
+    println!("|-----------------------------------------------|");
+    println!("| 3   |   Falcon512           |   sha256        |");
+    println!("|-----------------------------------------------|");
+    println!("| 4   |   Falcon512           |   sha512        |");
+    println!("|-----------------------------------------------|");
+
 }
