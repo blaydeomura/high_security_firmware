@@ -34,28 +34,49 @@ impl Wallet {
         }
         Ok(())
     }
+    // // Creates a new persona object, stores data in hashmap, serializes data to JSON
+    // pub fn save_persona(&mut self, persona: Persona) -> std::io::Result<()> {
+    //     let path_str = format!("wallet/{}.json", persona.get_name());
+    //     let path = Path::new(&path_str);
+    //     let serialized = serde_json::to_string_pretty(&persona)?;
+    //     fs::write(path, serialized)?;
+    //     self.keys.insert(persona.get_name(), persona);
+    //     Ok(())
+    // }
 
-    // Creates a new persona object, stores data in hashmap, serializes data to JSON
-    pub fn save_persona(&mut self, persona: Persona) -> std::io::Result<()> {
-        let path_str = format!("wallet/{}.json", persona.get_name());
+    pub fn save_persona(&mut self, mut persona: Persona) -> std::io::Result<()> {
+        // Convert name to lower case for case-insensitive handling
+        let lower_name = persona.get_name().to_lowercase();
+        persona.set_name(lower_name.clone()); // Ensure persona's name is also updated
+
+        let path_str = format!("wallet/{}.json", lower_name);
         let path = Path::new(&path_str);
         let serialized = serde_json::to_string_pretty(&persona)?;
         fs::write(path, serialized)?;
-        self.keys.insert(persona.get_name(), persona);
+        self.keys.insert(lower_name, persona);
         Ok(())
     }
 
-    // Removes data from hashmap and deletes corresponding JSON file
-    pub fn remove_persona(&mut self, name: &String) -> std::io::Result<()> {
-        self.keys.remove(name);
-        let path_str = format!("wallet/{}.json", name);
+    // // Removes data from hashmap and deletes corresponding JSON file
+    // pub fn remove_persona(&mut self, name: &String) -> std::io::Result<()> {
+    //     self.keys.remove(name);
+    //     let path_str = format!("wallet/{}.json", name);
+    //     fs::remove_file(path_str)?;
+    //     Ok(())
+    // }
+    pub fn remove_persona(&mut self, name: &str) -> std::io::Result<()> {
+        // Convert name to lower case for case-insensitive handling
+        let lower_name = name.to_lowercase();
+
+        self.keys.remove(&lower_name);
+        let path_str = format!("wallet/{}.json", lower_name);
         fs::remove_file(path_str)?;
         Ok(())
     }
 
     // Getter for name of persona
     pub fn get_persona(&self, name: &str) -> Option<&Persona> {
-        self.keys.get(name)
+        self.keys.get(&name.to_lowercase())
     }
 }
 

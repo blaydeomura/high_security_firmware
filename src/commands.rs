@@ -28,16 +28,6 @@ pub enum Commands {
         #[arg(short, long)]
         name: String,
     },
-    // Accesses an existing key pair with the encryption key
-    Access {
-        // Name of the person
-        #[arg(short, long)]
-        name: String,
-        
-        // Encryption key to decrypt the key pair
-        #[arg(short, long)]
-        encryption_key: String,
-    },
     // Signs a file with a provided persons private key
     Sign {
     // Name of the person
@@ -61,4 +51,11 @@ pub enum Commands {
         #[arg(short, long)]
         signature: String,
     },
+    RemoveSignature {
+        // Signature file to remove
+        #[arg(short, long)]
+        file: String,
+    },
+    ListSignatures,
+    ListFiles,
 }

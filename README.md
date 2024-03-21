@@ -3,13 +3,14 @@
 # Encrypted Wallet Manager
 
 ## Overview
-- This Rust program is a command-line tool for managing a wallet of encrypted key pairs. It provides functionality for generating, accessing, and removing key pairs securely. Keys are encrypted using AES-GCM encryption with a user-provided key.
+- This Rust program is a command-line tool for managing a wallet of Persona objects. A Persona object consists of a name, public and secret key pair generation, corresponding hashing values, and signing/verifying files.
 
 ## Features
 - Generate Keys: Generate a new key pair for a person with a specific encryption key.
-- Access Keys: Access a person's generated key pair with the same encryption key.
 - Remove Keys: Remove an existing key pair from the wallet.
-- Hash File: Calculate various cryptographic hashes for a specified file.
+- Sign a file: Signs a file with a secret key.
+- Verify a file: Verifies a file for authenticity.
+
 
 ## Usage
 - Command Line Options: The program uses the Clap library for parsing command-line arguments. The available options are as follows:
@@ -17,86 +18,33 @@
 
 # New program below
 * cargo run -- generate --name <Name of persona> --cs-id <1 through 4 CS id>
+    * generates persona, generates secret and public key pair depending which cipher suite algo you want
 * cargo run sign --name <Name of persona> --filename files/<name of file to hash>
+    * signs a file based on persona and which file to sign
 * cargo run verify --name <Name of persona> --filename files/<name of file to hash> --signature signatures/<signature of hashed file>
+    * verifies a file and which persona + signature file
 * cargo run -- remove --name <name of persona>
+    * removes persona
+* cargo run remove-signature --file <name of signature file to remove>
+    * removes signature file
+* cargo run list-signatures
+    * lists all signature files
+* cargo run list-files
+    * lists possible files to sign
 
 ## example
 * cargo run -- generate --name bob --cs-id 4
-* cargo run sign --name bob --filename files/file_test.txt
-* cargo run verify --name bob --filename files/file_test.txt --signature signatures/bob_file_test.txt.sig
+* cargo run sign --name bob --file files/file_test.txt
+* cargo run verify --name bob --file files/file_test.txt --signature signatures/bob_file_test.txt.sig
+* cargo run remove-signature --file bob_file_test.txt.sig
+* cargo run remove --name bob
+* cargo run list-signatures  
 
 
-
-
-
-
-
-
-# old is below
-
-- Generate: -- generate - Generates a new key pair for a given name and encryption key.
-    --name: Name of the person.
-    --encryption-key: Encryption key to secure the key pair.
-- Remove: -- remove - Removes an existing key pair.
-    --name: Name of the person.
-- Access: -- access - Accesses an existing key pair with the encryption key.
-    --name: Name of the person.
-    --encryption-key: Encryption key to decrypt the key pair.
-    
-- Sign a file: -- sign - signs a file
-    -- name: Name of person and keys would like to use
-    --encryption-key: Encryption key to sign
-- Verify a file: -- verify - verified someone signed file
-    --name: Name of person and keys would like to use
-    --signature: signature given when signed
-
-- Hash File: --hash-file - Calculate cryptographic hashes for a specified file.
-    --filename: Sets the input file to calculate hash for.
-
-## Example Usages
-- Overall format:
-    - cargo run -- <generate/access/remove> --name <name> --encryption-key <32 byte encryption key>
-- Generate a Key:
-    - cargo run -- generate --name Mallory --encryption-key "ThisIsA32ByteLongEncryptionKey00"
-- Access a Key:
-    - cargo run -- access --name Mallory --encryption-key "ThisIsA32ByteLongEncryptionKey00"
-- Remove a Key:
-    - cargo run -- remove --name Mallory
-
-- Sign a file:
-    - cargo run -- sign --name <name> --filename "<path to existing file>"
-        - prompted with encryption key...
-        - <32 bit encryption key that you used encrypt file>
-    - example:
-        - cargo run -- sign --name Mallory --filename files/file_test.txt
-        - ThisIsA32ByteLongEncryptionKey00
-        - output is a signature: yE6eM3N+Ap8DQey6JWMmp/PtGEBq1zv7fNMXya5+fmkNvFGl7b9nEnQk25Z8tRAmMTanoetXw/ppayte27ZdAA==
-    
-- Verify a file:
-    - cargo run -- verify --name <name> --filename keys/<file name> --signature <signature given from sign>
-        - promted to enter ecryption key.. <32 bit encryption key used when generating key>
-    - example
-        - cargo run -- verify --name Mallory --filename "files/file_test.txt" --signature yE6eM3N+Ap8DQey6JWMmp/PtGEBq1zv7fNMXya5+fmkNvFGl7b9nEnQk25Z8tRAmMTanoetXw/ppayte27ZdAA==
-        - ThisIsA32ByteLongEncryptionKey00
-
-- Hash a File:
-    - Run "cargo build --release" to build the executable.
-    - cargo run -- hash-file -- filename <filename> --algorithm <algo name>
-        - cargo run -- hash-file --filename "files/file_test.txt" --algorithm "sha256"
-        - cargo run -- hash-file --filename "files/file_test.txt" --algorithm "blake3"
-        - cargo run -- hash-file --filename "files/file_test.txt" --algorithm "sha256"
-        - cargo run -- hash-file --filename "files/file_test.txt" --algorithm "sha512"
-    - openSSl Command Line Arguments:
-        1. SHA-256:  openssl dgst -sha256 <filename>
-        2. SHA-384:  openssl dgst -sha384 <filename>
-        3. SHA-512:  openssl dgst -sha512 <filename>
-        4. MD5:      openssl dgst -md5 <filename>
-
-- Testing 
+# Testing 
     1. cargo test --test main_and_commands_test
     2. cargo test --test wallet_test
 
 
 ## Persistence
-- Wallet data is stored in a JSON file named wallet.json, which contains a hashmap of names mapped to the path where the encrypted key is stored.
+- Persona data is stored in wallet directory in json format. 
