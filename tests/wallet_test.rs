@@ -3,7 +3,7 @@ use rust_cli::wallet::Wallet;
 use rust_cli::persona::Persona;
 use criterion::{criterion_group, criterion_main, Criterion};
 
-// Unit test verifies the correctness of the generate and remove operations. 
+// Unit test to verify the correctness of the generate and remove operations. 
 #[test]
 
 /*
@@ -45,7 +45,7 @@ fn test_remove_persona() {
     assert_eq!(wallet.get_persona("test_persona"), None);
 }
 
-// Define benchmark functions to measure the performance of the Wallet operations, enerate and remove 
+// Define benchmark functions to measure the performance of the Wallet operations, generate and remove 
 
 /*
 generate_benchmark: This benchmark measures the time taken to generate and save a persona in the wallet.
