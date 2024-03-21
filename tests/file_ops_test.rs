@@ -7,9 +7,11 @@ use criterion::{Criterion};
 use criterion::{criterion_group, criterion_main};
 
 
-// Unit test verifies the correctness of the sign and verify operations. 
-// It creates a new wallet, adds a test persona to it, signs a file using the persona, 
-// and then verifies the signature. If any of these steps fail, the test will fail.
+/* 
+   Unit test verifies the correctness of the sign and verify operations. 
+   It creates a new wallet, adds a test persona to it, signs a file using the persona, 
+   and then verifies the signature. If any of these steps fail, the test will fail.
+*/ 
 #[test]
 fn test_file_operations() {
 
@@ -50,9 +52,11 @@ To run the criterion benchmarks performance tests simply type
     "cargo bench" in the command line 
 */
 
-// Criterion benchmarks performance test to measure the efficiency of the sign and verify operations using the criterion crate. 
-// Each benchmark function is defined to measure the execution time of the corresponding operation (sign or verify).
-// These benchmarks are useful for evaluating the performance of the algorithms over multiple iterations and providing statistical analysis on execution times. 
+/* 
+Criterion benchmarks performance test to measure the efficiency of the sign and verify operations using the criterion crate. 
+Each benchmark function is defined to measure the execution time of the corresponding operation (sign or verify).
+These benchmarks are useful for evaluating the performance of the algorithms over multiple iterations and providing statistical analysis on execution times. 
+*/
 
 fn sign_benchmark(c: &mut Criterion) {
     let mut wallet = Wallet::new();

@@ -70,6 +70,15 @@ impl Clone for Persona {
     }
 }
 
+// Implements the PartialEq trait for the Persona struct
+impl PartialEq for Persona {
+    // Defines the eq method, which compares two Persona instances for equality
+    fn eq(&self, other: &Self) -> bool {
+        // Checks if the names and cs_id fields of the two Persona instances are equal
+        self.name == other.name && self.cs_id == other.cs_id
+    }
+}
+
 // Generates correct signature algorithm based on cs_id
 pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error> {
     match cs_id {
