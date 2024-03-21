@@ -3,24 +3,27 @@
 # Encrypted Wallet Manager
 
 ## Overview
-- This Rust program is a command-line tool for managing a wallet of Persona objects. A Persona object consists of a name, public and secret key pair generation, corresponding hashing values, and signing/verifying files.
+- This Rust program is a command-line tool for managing a wallet of Persona objects. A Persona object consists of a name and a key pair generated using quantum safe algorithms. Users can generate and remove Personas as well as sign and verify files using the key pairs stored.
 
 ## Features
-- Generate Keys: Generate a new key pair for a person with a specific encryption key.
-- Remove Keys: Remove an existing key pair from the wallet.
-- Sign a file: Signs a file with a secret key.
-- Verify a file: Verifies a file for authenticity.
+- Generate: Generate a new key pair using the specified algorithm.
+- Remove: Remove an existing key pair from the wallet.
+- Sign: Signs a file with a secret key.
+- Verify: Verifies a file using public key and signature provided.
 
 
 ## Usage
 - Command Line Options: The program uses the Clap library for parsing command-line arguments. The available options are as follows:
 
+* View supported algorithms in each cipher suite
+```cargo run -- algorithms```
 
-# New program below
-* cargo run -- generate --name <Name of persona> --cs-id <1 through 4 CS id>
-    * generates persona, generates secret and public key pair depending which cipher suite algo you want
-* cargo run sign --name <Name of persona> --filename files/<name of file to hash>
-    * signs a file based on persona and which file to sign
+* Generate persona with specified name and cipher suite
+```cargo run -- generate --name <name> --cs-id <id>```
+
+* Sign a file using the specified persona
+```cargo run sign --name <name> --file <path to file>```
+
 * cargo run verify --name <Name of persona> --filename files/<name of file to hash> --signature signatures/<signature of hashed file>
     * verifies a file and which persona + signature file
 * cargo run -- remove --name <name of persona>
