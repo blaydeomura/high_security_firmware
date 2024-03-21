@@ -51,9 +51,11 @@ pub enum Commands {
         #[arg(short, long)]
         signature: String,
     },
-    remove_signature {
+    RemoveSignature {
         // Signature file to remove
         #[arg(short, long)]
         file: String,
     },
+    ListSignatures,
+    ListFiles,
 }

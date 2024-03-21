@@ -2,7 +2,7 @@ use clap::Parser;
 use rust_cli::wallet::Wallet;
 use rust_cli::commands::{Args, Commands};
 use rust_cli::persona::Persona;
-use rust_cli::file_ops::{remove_signature, sign, verify};
+use rust_cli::file_ops::{remove_signature, sign, verify, list_signature_files, list_files};
 
 fn main() {
     let args = Args::parse();
@@ -52,12 +52,22 @@ fn main() {
                 Err(e) => println!("Verification failed: {}", e),
             }
         },
-        Commands::remove_signature { file } => {
+        Commands::RemoveSignature { file } => {
             // Directly pass the signature file path to the verify function
             let result = remove_signature(&file);
             match result {
                 Ok(_) => println!("Removal successful."),
                 Err(e) => println!("Removal failed: {}", e),
+            }
+        },
+        Commands::ListSignatures => {
+            if let Err(e) = list_signature_files() {
+                println!("Failed to list signature files: {}", e);
+            }
+        },
+        Commands::ListFiles => {
+            if let Err(e) = list_files() {
+                println!("Failed to list signature files: {}", e);
             }
         },
     }

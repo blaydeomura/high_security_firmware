@@ -53,6 +53,10 @@ impl Persona {
     pub fn get_cs_id(&self) -> usize {
         self.cs_id
     }
+
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
 }
 
 impl Clone for Persona {

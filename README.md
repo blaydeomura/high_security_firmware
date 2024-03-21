@@ -18,14 +18,27 @@
 
 # New program below
 * cargo run -- generate --name <Name of persona> --cs-id <1 through 4 CS id>
+    * generates persona, generates secret and public key pair depending which cipher suite algo you want
 * cargo run sign --name <Name of persona> --filename files/<name of file to hash>
+    * signs a file based on persona and which file to sign
 * cargo run verify --name <Name of persona> --filename files/<name of file to hash> --signature signatures/<signature of hashed file>
+    * verifies a file and which persona + signature file
 * cargo run -- remove --name <name of persona>
+    * removes persona
+* cargo run remove-signature --file <name of signature file to remove>
+    * removes signature file
+* cargo run list-signatures
+    * lists all signature files
+* cargo run list-files
+    * lists possible files to sign
 
 ## example
 * cargo run -- generate --name bob --cs-id 4
 * cargo run sign --name bob --file files/file_test.txt
 * cargo run verify --name bob --file files/file_test.txt --signature signatures/bob_file_test.txt.sig
+* cargo run remove-signature --file bob_file_test.txt.sig
+* cargo run remove --name bob
+* cargo run list-signatures  
 
 
 # Testing 
