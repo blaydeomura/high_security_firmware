@@ -1,102 +1,81 @@
-#[cfg(test)]
-mod wallet_tests {
-    use std::fs;
-    use std::env;
-    use rust_cli::wallet::{Wallet, key_file_path}; // Import the Wallet struct and key_file_path function
-    use rust_cli::wallet::remove_key;  // Adjust the path accordingly
-    use rust_cli::wallet::generate_key;
+use rust_cli::wallet::Wallet;
+use rust_cli::persona::Persona;
+use std::time::{Instant};
 
-    fn create_temp_dir() -> std::io::Result<std::path::PathBuf> {
-        // Get the system's temporary directory
-        let mut temp_dir = env::temp_dir();
-    
-        // Generate a unique directory name
-        let dir_name = format!("temp_dir_{}", rand::random::<u32>());
-    
-        // Append the unique directory name to the temporary directory path
-        temp_dir.push(&dir_name);
-    
-        // Create the temporary directory
-        fs::create_dir(&temp_dir)?;
-    
-        Ok(temp_dir)
-    }
+// Define a function to generate a persona and measure the time taken
+fn generate_persona_benchmark() -> (usize, u128) {
+    let start_time = Instant::now();
 
-    // This test case verifies that the load_from_file() function correctly reads wallet contents from a JSON file. 
-    // It creates a temporary directory, writes a sample wallet JSON to a file within that directory, and then calls load_from_file() to load the wallet. 
-    // This test ensures that loading from file works as expected.
-    #[test]
-    fn test_load_from_file() {
-        // Get the temporary directory path
-        let temp_dir = create_temp_dir().expect("Failed to create temporary directory");
+    // Perform the operation you want to benchmark (e.g., generate a persona)
+    let mut wallet = Wallet::new();
+    let test_persona = Persona::new("test_persona".to_string(), 1);
+    wallet.save_persona(test_persona.clone()).unwrap();
 
-        // Create a temporary wallet file inside the directory
-        let wallet_json = r#"{"keys":{"test_person":"keys/test_person.pk8"}}"#;
-        let wallet_file_path = temp_dir.join("wallet.json");
-        
-        // Write the wallet JSON to the temporary file
-        fs::write(&wallet_file_path, wallet_json).expect("Failed to write wallet file");
-    }
+    let end_time = start_time.elapsed().as_nanos();
 
-    // This test case ensures that the save_to_file() function correctly serializes the wallet contents to a JSON string and writes it to a file. 
-    // It creates a wallet instance with sample keys, saves it to a temporary file, reads the saved file's content, and compares it with the expected JSON format. 
-    // This test guarantees that saving to file functions as intended.
-    #[test]
-    fn test_save_to_file() {
-        // Create a wallet with some keys
-        let wallet = Wallet {
-            keys: vec![("test_person".to_string(), "keys/test_person.pk8".to_string())].into_iter().collect(),
-        };
+    // Return the size of the public key and the elapsed time
+    (test_persona.get_pk().as_ref().len(), end_time)
+}
 
-        // Create a temporary directory
-        let temp_dir = create_temp_dir().expect("Failed to create temporary directory");
-        let wallet_file_path = temp_dir.join("wallet.json");
-        
-        // Save the wallet to a temporary file
-        wallet.save_to_file(wallet_file_path.to_str().unwrap()).unwrap();
+// Define a function to remove a persona and measure the time taken
+fn remove_persona_benchmark() -> u128 {
+    let start_time = Instant::now();
 
-        // Read the content of the saved file
-        let saved_content = fs::read_to_string(wallet_file_path).unwrap();
+    // Perform the operation you want to benchmark (e.g., remove a persona)
+    let mut wallet = Wallet::new();
+    let test_persona = Persona::new("test_persona".to_string(), 1);
+    wallet.save_persona(test_persona.clone()).unwrap();
+    wallet.remove_persona("test_persona").unwrap();
 
-        // Check if the saved content matches the expected JSON format
-        assert_eq!(saved_content, r#"{"keys":{"test_person":"keys/test_person.pk8"}}"#);
-    }
+    let end_time = start_time.elapsed().as_nanos();
 
-    // This test case verifies the generate_key() function's behavior by generating a new key and saving it to the wallet. 
-    // It creates a temporary directory, generates a key for a new person, and checks if the key is added to the wallet correctly. 
-    // This test ensures that key generation and addition to the wallet work as expected.
-    #[test]
-    fn test_generate_key() {
-        // Create a temporary directory
-        let temp_dir = create_temp_dir().expect("Failed to create temporary directory");
+    // Return the elapsed time
+    end_time
+}
 
-        // Generate a key and save it to the wallet
-        let mut wallet = Wallet::new();
-        let key_name = "new_person";
-        let encryption_key = "encryption_key".as_bytes(); // Mock encryption key
+#[test]
+fn test_performance() {
+    let (pk_size, gen_time) = generate_persona_benchmark();
+    let rmv_time = remove_persona_benchmark();
 
-        generate_key(&mut wallet, key_name, encryption_key);
+    // Convert nanoseconds to milliseconds
+    let gen_time_ms = gen_time as f64 / 1_000_000.0;
+    let rmv_time_ms = rmv_time as f64 / 1_000_000.0;
 
-        // Check if the key is added to the wallet
-        assert_eq!(wallet.keys.len(), 1);
-        assert_eq!(wallet.keys.get(key_name), Some(&key_file_path(key_name)));
-    }
+    // Print the results in a table format
+    println!("Performance Test Results:");
+    println!("Operation\t\tSize of Public Key\tTime (ms)");
+    println!("---------------------------------------------------");
+    println!("Generate Persona\t{}\t\t\t{:.2}", pk_size, gen_time_ms);
+    println!("Remove Persona\t\t\t\t\t{:.2}", rmv_time_ms);
+}
 
-    //  This test case ensures that the remove_key() function correctly removes a key from the wallet. 
-    // It creates a wallet with a sample key, calls remove_key() to remove that key, and then checks if the wallet is empty. 
-    // This test guarantees that key removal works as intended.
-    #[test]
-    fn test_remove_key() {
-        // Create a wallet with some keys
-        let mut wallet = Wallet {
-            keys: vec![("test_person".to_string(), "keys/test_person.pk8".to_string())].into_iter().collect(),
-        };
+#[test]
+fn test_generate_persona() {
+    let mut wallet = Wallet::new();
+    let test_persona = Persona::new("test_persona".to_string(), 1);
 
-        // Call the remove_key function
-        remove_key(&mut wallet, "test_person");
+    assert!(wallet.save_persona(test_persona.clone()).is_ok());
+    assert_eq!(wallet.keys.len(), 1);
 
-        // Ensure that the key has been removed from the wallet
-        assert!(wallet.keys.is_empty());
-    }
+    // Check if the persona exists in the wallet
+    assert!(match wallet.get_persona("test_persona") {
+        Some(persona) => *persona == test_persona,
+        None => false,
+    });
+}
 
+#[test]
+fn test_remove_persona() {
+    let mut wallet = Wallet::new();
+    let test_persona = Persona::new("test_persona".to_string(), 1);
+
+    wallet.save_persona(test_persona.clone()).unwrap();
+    assert_eq!(wallet.keys.len(), 1);
+
+    // Remove the persona from the wallet
+    assert!(wallet.remove_persona("test_persona").is_ok());
+
+    // Check if the persona has been removed from the wallet
+    assert_eq!(wallet.get_persona("test_persona"), None);
 }

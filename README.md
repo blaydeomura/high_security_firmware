@@ -42,7 +42,7 @@
 
 
 # Testing 
-    1. cargo test --test main_and_commands_test
+    1. cargo test --test file_ops_test
     2. cargo test --test wallet_test
 
 
