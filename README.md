@@ -42,8 +42,8 @@
 
 
 # Testing 
-    1. cargo test --test file_ops_test
-    2. cargo test --test wallet_test
+    1. cargo test --test file_ops_test -- --show-output
+    2. cargo test --test wallet_test -- --show-output
 
 
 ## Persistence
