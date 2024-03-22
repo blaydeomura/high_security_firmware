@@ -41,7 +41,7 @@
 * cargo run list-signatures  
 
 
-# Testing 
+# Testing Commands
     1. cargo test --test file_ops_test -- --show-output
     2. cargo test --test wallet_test -- --show-output
 
