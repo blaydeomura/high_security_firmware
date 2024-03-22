@@ -51,7 +51,7 @@ cargo run -- list-signatures
 ```
 * List of files to sing
 ```
-cargo run --  list-files
+cargo run -- list-files
 ```
 
 ## Examples
