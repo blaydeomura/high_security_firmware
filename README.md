@@ -13,29 +13,48 @@
 
 
 ## Usage
-- Command Line Options: The program uses the Clap library for parsing command-line arguments. The available options are as follows:
+The program uses the Clap library for parsing command-line arguments. The available options are as follows:
 
-* View supported algorithms in each cipher suite
-```cargo run -- algorithms```
+* View combination of algorithms in each cipher suite
+```
+cargo run -- algorithms
+```
 
 * Generate persona with specified name and cipher suite
-```cargo run -- generate --name <name> --cs-id <id>```
+```
+cargo run -- generate --name <name> --cs-id <id>
+```
 
 * Sign a file using the specified persona
-```cargo run sign --name <name> --file <path to file>```
+```
+cargo run -- sign --name <name> --file <path to file>
+```
 
-* cargo run verify --name <Name of persona> --filename files/<name of file to hash> --signature signatures/<signature of hashed file>
-    * verifies a file and which persona + signature file
-* cargo run -- remove --name <name of persona>
-    * removes persona
-* cargo run remove-signature --file <name of signature file to remove>
-    * removes signature file
-* cargo run list-signatures
-    * lists all signature files
-* cargo run list-files
-    * lists possible files to sign
+* Verify a file based on public key and signature
+```
+cargo run -- verify --name <name> --file <path to file to verify> --signature <path to file containing signature>
+```
 
-## example
+* Remove a persona from wallet
+```
+cargo run -- remove --name <name>
+```
+
+* Remove signature file
+```
+cargo run -- remove-signature --file <path to signature file>
+```
+
+* List signature files
+```
+cargo run -- list-signatures
+```
+* List of files to sing
+```
+cargo run --  list-files
+```
+
+## Examples
 * cargo run -- generate --name bob --cs-id 4
 * cargo run sign --name bob --file files/file_test.txt
 * cargo run verify --name bob --file files/file_test.txt --signature signatures/bob_file_test.txt.sig
@@ -44,7 +63,7 @@
 * cargo run list-signatures  
 
 
-# Testing 
+## Testing 
     1. cargo test --test file_ops_test
     2. cargo test --test wallet_test
 
