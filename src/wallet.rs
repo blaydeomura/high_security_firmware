@@ -19,7 +19,7 @@ impl Wallet {
     pub fn new() -> Self {
         let mut keys = HashMap::new();
         // Initialize personas and add them to the wallet
-        let persona1 = Persona::new("test_persona".to_string(), 1);
+        let persona1 = Persona::new("test_persona".to_string(), 1, 5);
         keys.insert(persona1.get_name(), persona1);
         Wallet { keys }
     }
@@ -34,15 +34,6 @@ impl Wallet {
         }
         Ok(())
     }
-    // // Creates a new persona object, stores data in hashmap, serializes data to JSON
-    // pub fn save_persona(&mut self, persona: Persona) -> std::io::Result<()> {
-    //     let path_str = format!("wallet/{}.json", persona.get_name());
-    //     let path = Path::new(&path_str);
-    //     let serialized = serde_json::to_string_pretty(&persona)?;
-    //     fs::write(path, serialized)?;
-    //     self.keys.insert(persona.get_name(), persona);
-    //     Ok(())
-    // }
 
     pub fn save_persona(&mut self, mut persona: Persona) -> std::io::Result<()> {
         // Convert name to lower case for case-insensitive handling
@@ -57,13 +48,6 @@ impl Wallet {
         Ok(())
     }
 
-    // // Removes data from hashmap and deletes corresponding JSON file
-    // pub fn remove_persona(&mut self, name: &String) -> std::io::Result<()> {
-    //     self.keys.remove(name);
-    //     let path_str = format!("wallet/{}.json", name);
-    //     fs::remove_file(path_str)?;
-    //     Ok(())
-    // }
     pub fn remove_persona(&mut self, name: &str) -> std::io::Result<()> {
         // Convert name to lower case for case-insensitive handling
         let lower_name = name.to_lowercase();
