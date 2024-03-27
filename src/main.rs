@@ -35,8 +35,8 @@ fn main() {
                 }
             }
         },
-        Commands::Sign { name, file } => {
-            let result = sign(&name, &file, &wallet);
+        Commands::Sign { name, input, output } => {
+            let result = sign(&name, &input, &output, &wallet);
             match result {
                 Ok(_) => {
                     println!("Signature created successfully.");
