@@ -35,7 +35,10 @@ pub enum Commands {
         name: String,
         // File to sign
         #[arg(short, long)]
-        file: String,
+        input: String,
+        // Signature output
+        #[arg(short, long)]
+        output: String
     },
     // Verifies the signature of a file with a provided public key
     Verify {
