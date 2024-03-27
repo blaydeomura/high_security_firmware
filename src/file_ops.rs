@@ -1,14 +1,38 @@
-use oqs::sig::Sig;
-use std::fs::File;
-use std::io::{self, Read};
+use oqs::sig::{PublicKey, Sig, Signature};
+use serde::{Serialize, Deserialize};
+use std::fs::{File, OpenOptions};
+use std::io::{self, Read, Write};
 use crate::wallet::Wallet;
-use crate::persona::{get_sig_algorithm, get_hash};
+use crate::persona::{get_sig_algorithm, get_hash, Persona};
 use std::fs;
 use std::path::Path;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 
-pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
+#[derive(Serialize, Deserialize, Debug)]
+struct Header {
+    file_type: usize,
+    cs_id: usize,
+    length: usize,
+    file_hash: Vec<u8>,
+    signer: PublicKey,
+    signature: Signature,
+    contents: Vec<u8>
+}
+
+fn construct_header(persona: &Persona, file_hash: Vec<u8>, signature: Signature, length: usize, contents: Vec<u8>) -> Header {
+    Header {
+        file_type: 1,
+        cs_id: persona.get_cs_id(),
+        length,
+        file_hash,
+        signer: persona.get_pk().clone(),
+        signature,
+        contents
+    }
+}
+
+pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()> {
     // get the correct persona 
     let persona = wallet.get_persona(&name.to_lowercase())
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
@@ -18,24 +42,26 @@ pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
 
     // read the file
-    let mut file = File::open(file_path)?;
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)?;
+    let mut in_file = File::open(input)?;
+    let mut contents = Vec::new();
+    let length = in_file.read_to_end(&mut contents)?;
 
     // hash the file's content and convert the result to Vec<u8> for uniform handling
-    let hash_result_vec: Vec<u8> = get_hash(persona.get_cs_id(), &buffer)?;
+    let file_hash: Vec<u8> = get_hash(persona.get_cs_id(), &contents)?;
 
     // signing
-    let signature = sig_algo.sign(&hash_result_vec, persona.get_sk())
+    let signature = sig_algo.sign(&file_hash, persona.get_sk())
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 
-    // directly write the signature bytes to a file
-    let signature_file_name = format!("{}_{}.sig", &name.to_lowercase(), Path::new(file_path).file_name().unwrap().to_string_lossy());
-    let signature_dir = "signatures";
-    fs::create_dir_all(signature_dir)?;
-    let signature_file_path = Path::new(signature_dir).join(signature_file_name);
-    fs::write(signature_file_path, &signature)?;
+    // generate header
+    let header = construct_header(persona, file_hash, signature, length, contents);
+    println!("Header created successfully");
+    let header_str = serde_json::to_string_pretty(&header)?;
 
+    // directly write the signature bytes to a file
+    let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
+    out_file.write(&header_str.as_bytes())?;
+    println!("Header written successfully");
     Ok(())
 }
 
