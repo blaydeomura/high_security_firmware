@@ -20,7 +20,10 @@ pub enum Commands {
         name: String,
 
         #[arg(short, long)]
-        cs_id: usize
+        cs_id: usize,
+
+        #[arg(short, long)]
+        non_quantum_cs_id: usize       
     },
     // Removes an existing key pair
     Remove {

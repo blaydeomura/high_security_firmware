@@ -12,8 +12,8 @@ fn main() {
     });
 
     match args.command {
-        Commands::Generate { name, cs_id } => {
-            let new_persona = Persona::new(name, cs_id);
+        Commands::Generate { name, cs_id , non_quantum_cs_id} => {
+            let new_persona = Persona::new(name, cs_id, non_quantum_cs_id);
             let result = wallet.save_persona(new_persona);
             match result {
                 Ok(_) => {
