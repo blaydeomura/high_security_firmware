@@ -1,9 +1,9 @@
 // Import necessary modules and types
+use rust_cli::persona::Persona;
 use rust_cli::wallet::Wallet;
 use rust_cli::file_ops::{sign, verify};
-use rust_cli::persona::Persona;
+use std::fs;
 use std::path::Path;
-use std::time::Instant;
 
 // Unit test to verify the correctness of the sign and verify operations
 #[test]
