@@ -1,9 +1,9 @@
 use rust_cli::persona::Persona;
 use rust_cli::wallet::Wallet;
-use std::time::Instant;
 use std::fs;
 use rust_cli::file_ops::{sign, verify};
 use std::path::Path;
+use std::time::Instant;
 
 #[test]
 fn test_generate_persona() {
@@ -87,21 +87,21 @@ fn measure_cipher_suite_performance(cs_id: usize) -> (String, Vec<(u128, usize)>
 
     // Measure the performance of each operation
     let start_sign = Instant::now();
-    let sign_result = sign(&persona_name, "files/file_test.txt", &wallet);
+    let _sign_result = sign(&persona_name, "files/file_test.txt", &wallet);
     let end_sign = start_sign.elapsed().as_nanos();
     let sign_time_ms = end_sign as u128 / 1_000_000;
     let sign_pk_size = test_persona.get_pk().as_ref().len();
     measurements.push((sign_time_ms, sign_pk_size));
 
     let start_verify = Instant::now();
-    let verify_result = verify(&persona_name, "files/file_test.txt", "signatures/test_persona_1_file_test.txt.sig", &wallet);
+    let _verify_result = verify(&persona_name, "files/file_test.txt", "signatures/test_persona_1_file_test.txt.sig", &wallet);
     let end_verify = start_verify.elapsed().as_nanos();
     let verify_time_ms = end_verify as u128 / 1_000_000;
     let verify_pk_size = test_persona.get_pk().as_ref().len();
     measurements.push((verify_time_ms, verify_pk_size));
 
     let start_remove = Instant::now();
-    let remove_result = wallet.remove_persona(&persona_name);
+    let _remove_result = wallet.remove_persona(&persona_name);
     let end_remove = start_remove.elapsed().as_nanos();
     let remove_time_ms = end_remove as u128 / 1_000_000;
     let remove_pk_size = test_persona.get_pk().as_ref().len();
@@ -126,7 +126,7 @@ fn test_performance() {
     println!("{:-<20}-|{:-<15}-|{:-<10}-|{:-<15}", "", "", "", "");
 
     // Iterate through each cipher suite and measure performance
-    for (cs_id, sig_alg, hash_alg) in &cipher_suites {
+    for (cs_id, _sig_alg, _hash_alg) in &cipher_suites {
         let (suite_name, measurements) = measure_cipher_suite_performance(*cs_id);
 
         // Print results for each operation and cipher suite
