@@ -9,6 +9,7 @@ use std::path::Path;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 
+// A struct to store information about a file and its signature
 #[derive(Serialize, Deserialize, Debug)]
 struct Header {
     file_type: usize,
@@ -20,6 +21,7 @@ struct Header {
     contents: Vec<u8>
 }
 
+// Constructs a header with the given information
 fn construct_header(persona: &Persona, file_hash: Vec<u8>, signature: Signature, length: usize, contents: Vec<u8>) -> Header {
     Header {
         file_type: 1,
@@ -55,13 +57,12 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
 
     // generate header
     let header = construct_header(persona, file_hash, signature, length, contents);
-    println!("Header created successfully");
     let header_str = serde_json::to_string_pretty(&header)?;
 
-    // directly write the signature bytes to a file
+    // write header contents to signature file
     let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
     out_file.write(&header_str.as_bytes())?;
-    println!("Header written successfully");
+
     Ok(())
 }
 
