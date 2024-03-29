@@ -67,29 +67,12 @@ impl Wallet {
     pub fn remove_persona(&mut self, name: &str) -> std::io::Result<()> {
         // Convert name to lower case for case-insensitive handling
         let lower_name = name.to_lowercase();
-    
-        // Check if the persona exists in the wallet
-        if let Some(_) = self.keys.get(&lower_name) {
-            // Remove the persona from the wallet
-            self.keys.remove(&lower_name);
-    
-            // Construct the path to the persona file
-            let path_str = format!("wallet/{}.json", lower_name);
-            let path = Path::new(&path_str);
-    
-            // Check if the persona file exists before attempting to remove it
-            if path.exists() {
-                fs::remove_file(path)?;
-            } else {
-                println!("Persona file '{}' not found.", path_str);
-            }
-        } else {
-            println!("Persona '{}' not found in wallet.", lower_name);
-        }
-    
+
+        self.keys.remove(&lower_name);
+        let path_str = format!("wallet/{}.json", lower_name);
+        fs::remove_file(path_str)?;
         Ok(())
     }
-    
 
     // Getter for name of persona
     pub fn get_persona(&self, name: &str) -> Option<&Persona> {
