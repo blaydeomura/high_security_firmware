@@ -1,7 +1,10 @@
 // cs_id: 1 | sig: Dilithium2 | hash: sha256
 // cs_id: 2 | sig: Dilithium2 | hash: sha512
-// cs_id: 3 | sig: Falcon512 | hash: sha256
-// cs_id: 4 | sig: Falcon512 | hash: sha512
+// cs_id: 3 | sig: Falcon512  | hash: sha256
+// cs_id: 4 | sig: Falcon512  | hash: sha512
+// cs_id: 5 | sig: Ed25519    | hash: sha256
+// cs_id: 6 | sig: RSA        | hash: sha256
+// cs_id: 7 | sig: Ecdsa      | hash: sha256
 
 extern crate ed25519_dalek;
 
