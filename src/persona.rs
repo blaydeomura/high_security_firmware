@@ -144,19 +144,34 @@ impl Persona {
             _ => None,
         }
     }
+
+    // This method remains unchanged
+    pub fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    pub fn get_sk(&self) -> Result<Vec<u8>, io::Error> {
+        match &self.sk {
+            // return the byte slice as Vec<u8>
+            CryptoPrivateKey::QuantumSafe(sk) => Ok(sk.as_ref().to_vec()),
+            CryptoPrivateKey::Ed25519(bytes) | CryptoPrivateKey::RSA(bytes) | CryptoPrivateKey::ECDSA(bytes) => Ok(bytes.clone()),
+            // Error handling for unsupported or missing keys
+            _ => Err(io::Error::new(io::ErrorKind::NotFound, "Secret key not found")),
+        }
+    }
+
+    // Method to retrieve the public key in Vec<u8> format
+    pub fn get_pk(&self) -> Result<Vec<u8>, io::Error> {
+        match &self.pk {
+            // For quantum-safe keys, assuming `to_bytes` method exists for serialization
+            CryptoPublicKey::QuantumSafe(pk) => Ok(pk.as_ref().to_vec()),
+            CryptoPublicKey::Ed25519(bytes) | CryptoPublicKey::RSA(bytes) | CryptoPublicKey::ECDSA(bytes) => Ok(bytes.clone()),
+            // Error handling for unsupported or missing keys
+            _ => Err(io::Error::new(io::ErrorKind::NotFound, "Public key not found")),
+        }
+    }
+    
 }
-
-
-// impl Clone for Persona {
-//     fn clone(&self) -> Self {
-//         Persona {
-//             name: self.name.clone(),
-//             cs_id: self.cs_id,
-//             pk: self.pk.clone(),
-//             sk: self.sk.clone(),
-//         }
-//     }
-// }
 
 fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io::Error> {
     match cs_id {
@@ -271,7 +286,15 @@ pub fn get_hash(cs_id: usize, buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Erro
     }
 }
 
+// Generates correct signature algorithm based on cs_id
+pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error> {
+    match cs_id {
+        1 | 2 => Ok(sig::Algorithm::Dilithium2),
+        3 | 4 => Ok(sig::Algorithm::Falcon512),
 
+        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4"))
+    }
+}
 
 
 

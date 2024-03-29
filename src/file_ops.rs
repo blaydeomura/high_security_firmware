@@ -2,7 +2,7 @@ use oqs::sig::Sig;
 use std::fs::File;
 use std::io::{self, Read};
 use crate::wallet::Wallet;
-use crate::persona::{get_sig_algorithm, get_hash};
+use crate::persona::get_hash;
 use std::fs;
 use std::path::Path;
 use std::io::ErrorKind;
@@ -68,6 +68,21 @@ pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &W
 
     Ok(())
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // removes the signature file associated with a given persona and file.
 pub fn remove_signature(signature_file_name: &str) -> io::Result<()> {
