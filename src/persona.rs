@@ -5,18 +5,46 @@
 // ADD IN OTHER CS IDS
 
 
+// use oqs::sig::{self, PublicKey as OqsPublicKey, SecretKey as OqsSecretKey};
+// use rsa::{RsaPrivateKey, pkcs8::{ToPublicKey, ToPrivateKey}, RsaPublicKey};
+// use rand::rngs::OsRng;
+// use serde::{Serialize, Deserialize};
+// use p256::ecdsa::{SigningKey as P256SigningKey, signature::Signer as _, VerifyingKey as P256VerifyingKey};
+// use ed25519_dalek::{Keypair as Ed25519Keypair, PublicKey as Ed25519PublicKey, SecretKey as Ed25519SecretKey};
 use oqs::sig::{self, PublicKey as OqsPublicKey, SecretKey as OqsSecretKey};
-use rsa::{RsaPrivateKey, pkcs8::{ToPublicKey, ToPrivateKey}, RsaPublicKey};
+// Ensure the rsa crate in Cargo.toml includes necessary features
+use rsa::{RsaPrivateKey, RsaPublicKey, pkcs8::{EncodePrivateKey, EncodePublicKey}};
 use rand::rngs::OsRng;
 use serde::{Serialize, Deserialize};
-use p256::ecdsa::{SigningKey as P256SigningKey, signature::Signer as _, VerifyingKey as P256VerifyingKey};
-use ed25519_dalek::{Keypair as Ed25519Keypair, PublicKey as Ed25519PublicKey, SecretKey as Ed25519SecretKey};
+// Correct usage of p256 and ed25519_dalek crates
+use p256::ecdsa::{SigningKey as P256SigningKey, VerifyingKey as P256VerifyingKey};
+use ed25519_dalek::Keypair as Ed25519Keypair;
+use sha2::Sha256;
+use sha2::Sha512;
+use std::io;
+use ed25519_dalek::Digest;
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+enum NonQuantumAlgorithm {
+    RSA2048,
+    ECDSAP256,
+    EdDSAEd25519,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum AlgorithmType {
+    QuantumSafe(sig::Algorithm),
+    NonQuantumSafe(NonQuantumAlgorithm),
+}
 
 // Quantum pub key
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum QuantumPublicKey {
     Dilithium2(OqsPublicKey),
     Falcon512(OqsPublicKey),
+    // ed generation
+    // ecdsa
 }
 
 // Quantum secret key
@@ -71,6 +99,7 @@ impl Persona {
                 (QuantumPublicKey::Falcon512(pk), QuantumSecretKey::Falcon512(sk))
             },
             _ => panic!("Unsupported quantum cs_id"),
+            // 5-8 non quantum
         };
 
         // Non-quantum-safe key pair generation 
@@ -80,12 +109,27 @@ impl Persona {
                 let private_key = RsaPrivateKey::new(&mut rng, 2048)
                     .expect("Failed to generate RSA private key");
                 let public_key = RsaPublicKey::from(&private_key);
+                
+                // Serialize the RSA public key to DER format as Vec<u8>
+                let pk_der = public_key.to_public_key_der()
+                    .expect("Failed to serialize RSA public key to DER")
+                    .to_vec(); // Convert directly to Vec<u8> for the public key
+                
+                // // Serialize the RSA private key to DER format as Vec<u8>
+                // let sk_der = private_key.to_pkcs8_der()
+                //     .expect("Failed to serialize RSA private key to DER")
+                //     .to_bytes(); // Convert the SecretDocument to Zeroizing<Vec<u8>>
+                
+                // (NonQuantumPublicKey::RSA(pk_der), NonQuantumSecretKey::RSA(sk_der))
+                let sk_der_result = private_key.to_pkcs8_der()
+                    .expect("Failed to serialize RSA private key to DER");
+                let sk_der_zeroizing = sk_der_result.to_bytes(); // Keep it in Zeroizing<Vec<u8>>
 
-                // Serialize keys to byte vectors for storage
-                let pk_der = public_key.to_public_key_der().expect("Failed to serialize RSA public key").as_ref().to_vec();
-                let sk_der = private_key.to_pkcs8_der().expect("Failed to serialize RSA private key").as_ref().to_vec();
+                let sk_der_cloned = sk_der_zeroizing.clone(); // Cloning as Vec<u8>, only if necessary
 
-                (NonQuantumPublicKey::RSA(pk_der), NonQuantumSecretKey::RSA(sk_der))
+                (NonQuantumPublicKey::RSA(pk_der), NonQuantumSecretKey::RSA(sk_der_cloned))
+
+
             },
             6 => { // ECDSA (P-256)
                 let mut rng = OsRng;
@@ -105,14 +149,14 @@ impl Persona {
             _ => panic!("Unsupported non-quantum cs_id"),
         };
 
-        Ok(Self {
+        Self {
             name,
             cs_id,
             quantum_pk,
             quantum_sk,
             non_quantum_pk,
             non_quantum_sk,
-        })
+        }
     }
 
     // Getter for persona name
@@ -176,5 +220,35 @@ impl Clone for Persona {
 impl PartialEq for Persona {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.cs_id == other.cs_id
+    }
+}
+
+// Function to generate the correct hash output based on cs_id
+pub fn get_hash(cs_id: usize, buffer: &[u8]) -> Result<Vec<u8>, io::Error> {
+    match cs_id {
+        1 | 3 | 5 | 6 | 7 => {
+            // Quantum-safe algorithms and non-quantum (RSA, ECDSA, EdDSA) using SHA-256
+            let mut hasher = Sha256::new();
+            hasher.update(buffer);
+            Ok(hasher.finalize().to_vec())
+        },
+        2 | 4 => {
+            // Quantum-safe algorithms using SHA-512
+            let mut hasher = Sha512::new();
+            hasher.update(buffer);
+            Ok(hasher.finalize().to_vec())
+        },
+        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-7")),
+    }
+}
+
+pub fn get_sig_algorithm(cs_id: usize) -> Result<AlgorithmType, io::Error> {
+    match cs_id {
+        1 | 2 => Ok(AlgorithmType::QuantumSafe(sig::Algorithm::Dilithium2)),
+        3 | 4 => Ok(AlgorithmType::QuantumSafe(sig::Algorithm::Falcon512)),
+        5 => Ok(AlgorithmType::NonQuantumSafe(NonQuantumAlgorithm::RSA2048)),
+        6 => Ok(AlgorithmType::NonQuantumSafe(NonQuantumAlgorithm::ECDSAP256)),
+        7 => Ok(AlgorithmType::NonQuantumSafe(NonQuantumAlgorithm::EdDSAEd25519)),
+        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-7")),
     }
 }
