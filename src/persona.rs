@@ -3,79 +3,153 @@
 // cs_id: 3 | sig: Falcon512 | hash: sha256
 // cs_id: 4 | sig: Falcon512 | hash: sha512
 
-use std::io;
-use oqs::sig;
-use serde::{Serialize, Deserialize};
-use sha2::{Digest, Sha256, Sha512};
 
-#[derive(Serialize, Deserialize, Debug)]
+// cs_id: 1 | sig: Dilithium2 | hash: sha256
+// cs_id: 2 | sig: Dilithium2 | hash: sha512
+// cs_id: 3 | sig: Falcon512 | hash: sha256
+// cs_id: 4 | sig: Falcon512 | hash: sha512
+
+extern crate ed25519_dalek;
+
+
+// use serde::{Serialize, Deserialize};
+// use sha2::{Digest, Sha256, Sha512};
+// use oqs::sig::{PublicKey as OqsPublicKey, SecretKey as OqsSecretKey};
+// use ed25519_dalek::{Keypair as Ed25519Keypair, PublicKey as Ed25519PublicKey, SecretKey as Ed25519SecretKey};
+// use rsa::{RsaPrivateKey, RsaPublicKey, traits::PaddingScheme};
+// use p256::ecdsa::{SigningKey as EcdsaSigningKey, signature::Signer};
+
+use oqs::sig;
+use std::io::{self, ErrorKind};
+use rsa::{RsaPrivateKey, RsaPublicKey};
+use ring::{rand, signature::{self, KeyPair}};
+use p256::ecdsa::SigningKey as EcdsaSigningKey;
+use ::rand::rngs::OsRng;
+use rsa::pkcs1::EncodeRsaPublicKey;
+
+
+// // Enums to encapsulate different types of keys
+// #[derive(Debug)]
+
+// // Enums for public and private keys to handle different cryptographic systems
+// enum CryptoPublicKey {
+//     QuantumSafe(sig::PublicKey),
+//     Ed25519(Ed25519PublicKey),
+//     RSA(Vec<u8>),  // RSA public key serialization might depend on use case
+//     ECDSA(Vec<u8>),  // ECDSA public key serialization might depend on use case
+// }
+
+// #[derive(Debug)]
+// enum CryptoPrivateKey {
+//     QuantumSafe(sig::SecretKey),
+//     Ed25519(Ed25519SecretKey),
+//     RSA(RsaPrivateKey),
+//     ECDSA(EcdsaSigningKey),
+// }
+
+#[derive(Debug)]
+enum CryptoPublicKey {
+    QuantumSafe(sig::PublicKey),
+    Ed25519(Vec<u8>), // Serialize the public key for storage
+    RSA(Vec<u8>),  
+    ECDSA(Vec<u8>),  
+}
+
+#[derive(Debug)]
+enum CryptoPrivateKey {
+    QuantumSafe(sig::SecretKey),
+    Ed25519(Vec<u8>), // PKCS#8 encoding of the private key
+    RSA(rsa::RsaPrivateKey),
+    ECDSA(p256::ecdsa::SigningKey),
+}
+
+
+// struct persona
+#[derive(Debug)]
 pub struct Persona {
     name: String,
     cs_id: usize,
-    pk: sig::PublicKey,
-    sk: sig::SecretKey
+    pk: CryptoPublicKey,
+    sk: CryptoPrivateKey,
 }
 
-impl Persona {
-    pub fn new(name: String, cs_id: usize) -> Self {
-        // Initialize sig algorithms
-        let sig_algo = get_sig_algorithm(cs_id).unwrap_or_else(|error| { panic!("{}", error) });
-        let sig_algo = sig::Sig::new(sig_algo).unwrap_or_else(|_| { panic!("Failed to create signature object")} );
 
-        // Generate sig keypairs
-        let (pk, sk) = sig_algo.keypair().unwrap_or_else(|_| { panic!("Failed to generate keypair") });
-        
-        // Create new persona
-        Self {
+impl Persona {
+    pub fn new(name: String, cs_id: usize) -> Result<Self, io::Error> {
+        // Use the generate_keys function for the specified cs_id
+        let (pk, sk) = generate_keys(cs_id)?;
+
+        // Create and return the new persona
+        Ok(Self {
             name,
             cs_id,
             pk,
-            sk
-        }
-    }
-
-    // Getter for persona name
-    pub fn get_name(&self) -> String {
-        self.name.clone()
-    }
-
-    // Getter for the public key
-    pub fn get_pk(&self) -> &oqs::sig::PublicKey {
-        &self.pk
-    }
-
-    // Getter for the secret key
-    pub fn get_sk(&self) -> &oqs::sig::SecretKey {
-        &self.sk
-    }
-
-    // Getter for the cs_id
-    pub fn get_cs_id(&self) -> usize {
-        self.cs_id
-    }
-
-    pub fn set_name(&mut self, name: String) {
-        self.name = name;
+            sk,
+        })
     }
 }
 
-impl Clone for Persona {
-    fn clone(&self) -> Self {
-        Persona {
-            name: self.name.clone(),
-            cs_id: self.cs_id,
-            pk: self.pk.clone(),
-            sk: self.sk.clone(),
-        }
-    }
-}
 
-// Implements the PartialEq trait for the Persona struct
-impl PartialEq for Persona {
-    // Defines the eq method, which compares two Persona instances for equality
-    fn eq(&self, other: &Self) -> bool {
-        // Checks if the names and cs_id fields of the two Persona instances are equal
-        self.name == other.name && self.cs_id == other.cs_id
+
+
+fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io::Error> {
+    match cs_id {
+        1 | 2 => {
+            let sigalg = sig::Sig::new(sig::Algorithm::Dilithium2)
+                .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?; // Convert the error type;
+            let (pk, sk) = sigalg.keypair()
+                .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?;
+            Ok((CryptoPublicKey::QuantumSafe(pk), CryptoPrivateKey::QuantumSafe(sk)))
+        },
+        3 | 4 => {
+            let sigalg = sig::Sig::new(sig::Algorithm::Falcon512)
+                .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?; // Convert the error type;
+            let (pk, sk) = sigalg.keypair()
+                .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?;
+            Ok((CryptoPublicKey::QuantumSafe(pk), CryptoPrivateKey::QuantumSafe(sk)))
+        },
+        5 => {
+            // https://docs.rs/ring/latest/ring/signature/index.html 
+            // let rng = rand::SystemRandom::new();
+            // let pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng)?;
+            // let keypair = signature::Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())?;
+            // Ok((CryptoPublicKey::Ed25519(keypair.public_key()), CryptoPrivateKey::Ed25519(keypair.secret_key())))
+
+            let rng = rand::SystemRandom::new();
+            let pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+            let key_pair = signature::Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+            // Serialize the public key for storage
+            let public_key_bytes = key_pair.public_key().as_ref().to_vec();
+            // Store the PKCS#8 private key bytes directly
+            let private_key_bytes = pkcs8_bytes.as_ref().to_vec();
+
+            Ok((CryptoPublicKey::Ed25519(public_key_bytes), CryptoPrivateKey::Ed25519(private_key_bytes)))
+        },
+        6 => {
+            let mut rng = OsRng{};
+            // let rng = rand::SystemRandom::new();
+
+            let bits = 2048;
+            let private_key = RsaPrivateKey::new(&mut rng, bits).expect("Failed to generate a key");
+            let public_key = RsaPublicKey::from(&private_key);
+            // RSA keys require serialization for storage/transport
+            // let pk_der = public_key.to_pkcs1_der().expect("Failed to serialize public key").as_der().to_vec();
+            let pk_der = public_key.to_pkcs1_der().expect("Failed to serialize public key").as_ref().to_vec();
+
+            Ok((CryptoPublicKey::RSA(pk_der), CryptoPrivateKey::RSA(private_key)))
+        },
+        7 => {
+            let signing_key = EcdsaSigningKey::random(&mut OsRng{});  // Generate a new ECDSA signing key
+            let verify_key = signing_key.verifying_key();
+            // ECDSA keys also require serialization for storage/transport
+            let vk_der = verify_key.to_encoded_point(false).as_bytes().to_vec();
+            Ok((CryptoPublicKey::ECDSA(vk_der), CryptoPrivateKey::ECDSA(signing_key)))
+        },
+        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
     }
 }
 
@@ -88,19 +162,123 @@ pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error>
     }
 }
 
-// Generates correct hash output based on cs_id
-pub fn get_hash(cs_id: usize, buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
-    match cs_id {
-        1 | 3 => {
-            let mut hasher = Sha256::new();
-            hasher.update(&buffer);
-            Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
-        },
-        2 | 4 => {
-            let mut hasher = Sha512::new();
-            hasher.update(&buffer);
-            Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
-        },
-        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4")),
-    }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// use std::io;
+// use oqs::sig;
+// use serde::{Serialize, Deserialize};
+// use sha2::{Digest, Sha256, Sha512};
+
+// #[derive(Serialize, Deserialize, Debug)]
+// pub struct Persona {
+//     name: String,
+//     cs_id: usize,
+//     pk: sig::PublicKey,
+//     sk: sig::SecretKey
+// }
+
+// impl Persona {
+//     pub fn new(name: String, cs_id: usize) -> Self {
+//         // Initialize sig algorithms
+//         let sig_algo = get_sig_algorithm(cs_id).unwrap_or_else(|error| { panic!("{}", error) });
+//         let sig_algo = sig::Sig::new(sig_algo).unwrap_or_else(|_| { panic!("Failed to create signature object")} );
+
+//         // Generate sig keypairs
+//         let (pk, sk) = sig_algo.keypair().unwrap_or_else(|_| { panic!("Failed to generate keypair") });
+        
+//         // Create new persona
+//         Self {
+//             name,
+//             cs_id,
+//             pk,
+//             sk
+//         }
+//     }
+
+//     // Getter for persona name
+//     pub fn get_name(&self) -> String {
+//         self.name.clone()
+//     }
+
+//     // Getter for the public key
+//     pub fn get_pk(&self) -> &oqs::sig::PublicKey {
+//         &self.pk
+//     }
+
+//     // Getter for the secret key
+//     pub fn get_sk(&self) -> &oqs::sig::SecretKey {
+//         &self.sk
+//     }
+
+//     // Getter for the cs_id
+//     pub fn get_cs_id(&self) -> usize {
+//         self.cs_id
+//     }
+
+//     pub fn set_name(&mut self, name: String) {
+//         self.name = name;
+//     }
+// }
+
+// impl Clone for Persona {
+//     fn clone(&self) -> Self {
+//         Persona {
+//             name: self.name.clone(),
+//             cs_id: self.cs_id,
+//             pk: self.pk.clone(),
+//             sk: self.sk.clone(),
+//         }
+//     }
+// }
+
+// // Implements the PartialEq trait for the Persona struct
+// impl PartialEq for Persona {
+//     // Defines the eq method, which compares two Persona instances for equality
+//     fn eq(&self, other: &Self) -> bool {
+//         // Checks if the names and cs_id fields of the two Persona instances are equal
+//         self.name == other.name && self.cs_id == other.cs_id
+//     }
+// }
+
+// // Generates correct signature algorithm based on cs_id
+// pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error> {
+//     match cs_id {
+//         1 | 2 => Ok(sig::Algorithm::Dilithium2),
+//         3 | 4 => Ok(sig::Algorithm::Falcon512),
+//         _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4"))
+//     }
+// }
+
+// // Generates correct hash output based on cs_id
+// pub fn get_hash(cs_id: usize, buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
+//     match cs_id {
+//         1 | 3 => {
+//             let mut hasher = Sha256::new();
+//             hasher.update(&buffer);
+//             Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
+//         },
+//         2 | 4 => {
+//             let mut hasher = Sha512::new();
+//             hasher.update(&buffer);
+//             Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
+//         },
+//         _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4")),
+//     }
+// }
