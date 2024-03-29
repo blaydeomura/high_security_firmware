@@ -3,17 +3,10 @@
 // cs_id: 3 | sig: Falcon512 | hash: sha256
 // cs_id: 4 | sig: Falcon512 | hash: sha512
 
-
-// cs_id: 1 | sig: Dilithium2 | hash: sha256
-// cs_id: 2 | sig: Dilithium2 | hash: sha512
-// cs_id: 3 | sig: Falcon512 | hash: sha256
-// cs_id: 4 | sig: Falcon512 | hash: sha512
-
 extern crate ed25519_dalek;
 
 
 // use serde::{Serialize, Deserialize};
-// use sha2::{Digest, Sha256, Sha512};
 // use oqs::sig::{PublicKey as OqsPublicKey, SecretKey as OqsSecretKey};
 // use ed25519_dalek::{Keypair as Ed25519Keypair, PublicKey as Ed25519PublicKey, SecretKey as Ed25519SecretKey};
 // use rsa::{RsaPrivateKey, RsaPublicKey, traits::PaddingScheme};
@@ -26,28 +19,10 @@ use ring::{rand, signature::{self, KeyPair}};
 use p256::ecdsa::SigningKey as EcdsaSigningKey;
 use ::rand::rngs::OsRng;
 use rsa::pkcs1::EncodeRsaPublicKey;
+use sha2::{Digest, Sha256, Sha512};
 
 
-// // Enums to encapsulate different types of keys
-// #[derive(Debug)]
-
-// // Enums for public and private keys to handle different cryptographic systems
-// enum CryptoPublicKey {
-//     QuantumSafe(sig::PublicKey),
-//     Ed25519(Ed25519PublicKey),
-//     RSA(Vec<u8>),  // RSA public key serialization might depend on use case
-//     ECDSA(Vec<u8>),  // ECDSA public key serialization might depend on use case
-// }
-
-// #[derive(Debug)]
-// enum CryptoPrivateKey {
-//     QuantumSafe(sig::SecretKey),
-//     Ed25519(Ed25519SecretKey),
-//     RSA(RsaPrivateKey),
-//     ECDSA(EcdsaSigningKey),
-// }
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum CryptoPublicKey {
     QuantumSafe(sig::PublicKey),
     Ed25519(Vec<u8>), // Serialize the public key for storage
@@ -55,7 +30,7 @@ enum CryptoPublicKey {
     ECDSA(Vec<u8>),  
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum CryptoPrivateKey {
     QuantumSafe(sig::SecretKey),
     Ed25519(Vec<u8>), // PKCS#8 encoding of the private key
@@ -87,10 +62,88 @@ impl Persona {
             sk,
         })
     }
+
+    // Getter for persona name
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    // Getter for the public key that tries to return an oqs::sig::PublicKey
+    pub fn get_quantum_safe_pk(&self) -> Option<&sig::PublicKey> {
+        match &self.pk {
+            CryptoPublicKey::QuantumSafe(pk) => Some(pk),
+            _ => None,
+        }
+    }
+
+    // Getter for the private key that tries to return an oqs::sig::SecretKey
+    pub fn get_quantum_safe_sk(&self) -> Option<&sig::SecretKey> {
+        match &self.sk {
+            CryptoPrivateKey::QuantumSafe(sk) => Some(sk),
+            _ => None,
+        }
+    }
+
+    // Getter for RSA public key bytes
+    pub fn get_rsa_pk_bytes(&self) -> Option<&[u8]> {
+        match &self.pk {
+            CryptoPublicKey::RSA(bytes) => Some(bytes),
+            _ => None,
+        }
+    }
+
+    // Getter for the RSA private key
+    pub fn get_rsa_sk(&self) -> Option<&RsaPrivateKey> {
+        match &self.sk {
+            CryptoPrivateKey::RSA(key) => Some(key),
+            _ => None,
+        }
+    }
+
+    // Getter for Ed25519 public key bytes
+    pub fn get_ed25519_pk_bytes(&self) -> Option<&[u8]> {
+        match &self.pk {
+            CryptoPublicKey::Ed25519(bytes) => Some(bytes),
+            _ => None,
+        }
+    }
+
+    // Getter for Ed25519 private key bytes
+    pub fn get_ed25519_sk_bytes(&self) -> Option<&[u8]> {
+        match &self.sk {
+            CryptoPrivateKey::Ed25519(bytes) => Some(bytes),
+            _ => None,
+        }
+    }
+
+    // Getter for ECDSA public key bytes
+    pub fn get_ecdsa_pk_bytes(&self) -> Option<&[u8]> {
+        match &self.pk {
+            CryptoPublicKey::ECDSA(bytes) => Some(bytes),
+            _ => None,
+        }
+    }
+
+    // Getter for the ECDSA private key
+    pub fn get_ecdsa_sk(&self) -> Option<&EcdsaSigningKey> {
+        match &self.sk {
+            CryptoPrivateKey::ECDSA(key) => Some(key),
+            _ => None,
+        }
+    }
 }
 
 
-
+impl Clone for Persona {
+    fn clone(&self) -> Self {
+        Persona {
+            name: self.name.clone(),
+            cs_id: self.cs_id,
+            pk: self.pk.clone(),
+            sk: self.sk.clone(),
+        }
+    }
+}
 
 fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io::Error> {
     match cs_id {
@@ -110,10 +163,6 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
         },
         5 => {
             // https://docs.rs/ring/latest/ring/signature/index.html 
-            // let rng = rand::SystemRandom::new();
-            // let pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng)?;
-            // let keypair = signature::Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())?;
-            // Ok((CryptoPublicKey::Ed25519(keypair.public_key()), CryptoPrivateKey::Ed25519(keypair.secret_key())))
 
             let rng = rand::SystemRandom::new();
             let pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng)
@@ -126,18 +175,13 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
             let public_key_bytes = key_pair.public_key().as_ref().to_vec();
             // Store the PKCS#8 private key bytes directly
             let private_key_bytes = pkcs8_bytes.as_ref().to_vec();
-
             Ok((CryptoPublicKey::Ed25519(public_key_bytes), CryptoPrivateKey::Ed25519(private_key_bytes)))
         },
         6 => {
             let mut rng = OsRng{};
-            // let rng = rand::SystemRandom::new();
-
             let bits = 2048;
             let private_key = RsaPrivateKey::new(&mut rng, bits).expect("Failed to generate a key");
             let public_key = RsaPublicKey::from(&private_key);
-            // RSA keys require serialization for storage/transport
-            // let pk_der = public_key.to_pkcs1_der().expect("Failed to serialize public key").as_der().to_vec();
             let pk_der = public_key.to_pkcs1_der().expect("Failed to serialize public key").as_ref().to_vec();
 
             Ok((CryptoPublicKey::RSA(pk_der), CryptoPrivateKey::RSA(private_key)))
@@ -145,7 +189,6 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
         7 => {
             let signing_key = EcdsaSigningKey::random(&mut OsRng{});  // Generate a new ECDSA signing key
             let verify_key = signing_key.verifying_key();
-            // ECDSA keys also require serialization for storage/transport
             let vk_der = verify_key.to_encoded_point(false).as_bytes().to_vec();
             Ok((CryptoPublicKey::ECDSA(vk_der), CryptoPrivateKey::ECDSA(signing_key)))
         },
@@ -153,17 +196,31 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
     }
 }
 
-// Generates correct signature algorithm based on cs_id
-pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error> {
-    match cs_id {
-        1 | 2 => Ok(sig::Algorithm::Dilithium2),
-        3 | 4 => Ok(sig::Algorithm::Falcon512),
-        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4"))
+
+// Implements the PartialEq trait for the Persona struct
+impl PartialEq for Persona {
+    // Defines the eq method, which compares two Persona instances for equality
+    fn eq(&self, other: &Self) -> bool {
+        // Checks if the names and cs_id fields of the two Persona instances are equal
+        self.name == other.name && self.cs_id == other.cs_id
     }
 }
 
-
-
+pub fn get_hash(cs_id: usize, buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
+    match cs_id {
+        1 | 3 | 5 | 6 | 7 => {
+            let mut hasher = Sha256::new();
+            hasher.update(&buffer);
+            Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
+        },
+        2 | 4 => {
+            let mut hasher = Sha512::new();
+            hasher.update(&buffer);
+            Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
+        },
+        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4")),
+    }
+}
 
 
 
