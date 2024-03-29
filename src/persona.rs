@@ -23,9 +23,11 @@ use p256::ecdsa::SigningKey as EcdsaSigningKey;
 use ::rand::rngs::OsRng;
 use rsa::pkcs1::EncodeRsaPublicKey;
 use sha2::{Digest, Sha256, Sha512};
+use serde::{Deserialize, Serialize};
+use rsa::pkcs1::EncodeRsaPrivateKey;
 
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 enum CryptoPublicKey {
     QuantumSafe(sig::PublicKey),
     Ed25519(Vec<u8>), // Serialize the public key for storage
@@ -33,17 +35,25 @@ enum CryptoPublicKey {
     ECDSA(Vec<u8>),  
 }
 
-#[derive(Debug, Clone)]
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// enum CryptoPrivateKey {
+//     QuantumSafe(sig::SecretKey),
+//     Ed25519(Vec<u8>), // PKCS#8 encoding of the private key
+//     RSA(rsa::RsaPrivateKey),
+//     ECDSA(p256::ecdsa::SigningKey),
+// }
+#[derive(Serialize, Deserialize, Debug, Clone)]
 enum CryptoPrivateKey {
     QuantumSafe(sig::SecretKey),
-    Ed25519(Vec<u8>), // PKCS#8 encoding of the private key
-    RSA(rsa::RsaPrivateKey),
-    ECDSA(p256::ecdsa::SigningKey),
+    Ed25519(Vec<u8>),
+    RSA(Vec<u8>),  // Store the RSA private key as serialized PKCS#8
+    ECDSA(Vec<u8>),
 }
 
 
+
 // struct persona
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Persona {
     name: String,
     cs_id: usize,
@@ -96,9 +106,9 @@ impl Persona {
     }
 
     // Getter for the RSA private key
-    pub fn get_rsa_sk(&self) -> Option<&RsaPrivateKey> {
+    pub fn get_rsa_sk(&self) -> Option<&[u8]> {
         match &self.sk {
-            CryptoPrivateKey::RSA(key) => Some(key),
+            CryptoPrivateKey::RSA(bytes) => Some(bytes),
             _ => None,
         }
     }
@@ -127,26 +137,26 @@ impl Persona {
         }
     }
 
-    // Getter for the ECDSA private key
-    pub fn get_ecdsa_sk(&self) -> Option<&EcdsaSigningKey> {
+    // Getter for the ECDSA private key bytes
+    pub fn get_ecdsa_sk(&self) -> Option<&[u8]> {
         match &self.sk {
-            CryptoPrivateKey::ECDSA(key) => Some(key),
+            CryptoPrivateKey::ECDSA(bytes) => Some(bytes),
             _ => None,
         }
     }
 }
 
 
-impl Clone for Persona {
-    fn clone(&self) -> Self {
-        Persona {
-            name: self.name.clone(),
-            cs_id: self.cs_id,
-            pk: self.pk.clone(),
-            sk: self.sk.clone(),
-        }
-    }
-}
+// impl Clone for Persona {
+//     fn clone(&self) -> Self {
+//         Persona {
+//             name: self.name.clone(),
+//             cs_id: self.cs_id,
+//             pk: self.pk.clone(),
+//             sk: self.sk.clone(),
+//         }
+//     }
+// }
 
 fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io::Error> {
     match cs_id {
@@ -181,19 +191,55 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
             Ok((CryptoPublicKey::Ed25519(public_key_bytes), CryptoPrivateKey::Ed25519(private_key_bytes)))
         },
         6 => {
-            let mut rng = OsRng{};
-            let bits = 2048;
-            let private_key = RsaPrivateKey::new(&mut rng, bits).expect("Failed to generate a key");
-            let public_key = RsaPublicKey::from(&private_key);
-            let pk_der = public_key.to_pkcs1_der().expect("Failed to serialize public key").as_ref().to_vec();
+            // let mut rng = OsRng{};
+            // let bits = 2048;
+            // let private_key = RsaPrivateKey::new(&mut rng, bits).expect("Failed to generate a key");
+            // let public_key = RsaPublicKey::from(&private_key);
+            // let pk_der = public_key.to_pkcs1_der().expect("Failed to serialize public key").as_ref().to_vec();
 
-            Ok((CryptoPublicKey::RSA(pk_der), CryptoPrivateKey::RSA(private_key)))
+            // Ok((CryptoPublicKey::RSA(pk_der), CryptoPrivateKey::RSA(private_key)))
+
+
+            let mut rng = OsRng::default();
+            let bits = 2048;
+            let private_key = RsaPrivateKey::new(&mut rng, bits)
+                .expect("Failed to generate a key");
+            let public_key = RsaPublicKey::from(&private_key);
+        
+            let pk_der = public_key.to_pkcs1_der()
+                .expect("Failed to serialize public key")
+                .to_vec();
+        
+            
+            //https://docs.rs/pkcs8/latest/pkcs8/struct.SecretDocument.html
+            let sk_der = private_key.to_pkcs1_der()
+                .expect("Failed to serialize private key")
+                .to_bytes()
+                .to_vec();
+        
+            Ok((CryptoPublicKey::RSA(pk_der), CryptoPrivateKey::RSA(sk_der)))
+        
+
         },
         7 => {
+            // let signing_key = EcdsaSigningKey::random(&mut OsRng{});  // Generate a new ECDSA signing key
+            // let verify_key = signing_key.verifying_key();
+            // let vk_der = verify_key.to_encoded_point(false).as_bytes().to_vec();
+            // Ok((CryptoPublicKey::ECDSA(vk_der), CryptoPrivateKey::ECDSA(signing_key)))
+
+
+            let mut rng = OsRng::default();
             let signing_key = EcdsaSigningKey::random(&mut OsRng{});  // Generate a new ECDSA signing key
-            let verify_key = signing_key.verifying_key();
+            let verify_key = signing_key.verifying_key(); // Derive the corresponding verifying (public) key
+
+            // Serialize the verifying (public) key to an uncompressed form
             let vk_der = verify_key.to_encoded_point(false).as_bytes().to_vec();
-            Ok((CryptoPublicKey::ECDSA(vk_der), CryptoPrivateKey::ECDSA(signing_key)))
+
+            //-----NEED TO STORE PRIVATE KEYS SAFELT------
+            let sk_bytes = signing_key.to_bytes();
+
+            Ok((CryptoPublicKey::ECDSA(vk_der), CryptoPrivateKey::ECDSA(sk_bytes.to_vec())))
+            
         },
         _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
     }

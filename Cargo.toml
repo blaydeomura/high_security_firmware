@@ -28,6 +28,7 @@ hex = "0.4.3"
 ed25519-dalek = "1.0.1"
 rsa = "0.9.6"
 p256 = "0.13.2"
+pkcs1 = "0.7.5" 
 
 [dependencies.oqs]
 version = "*"

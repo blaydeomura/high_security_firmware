@@ -1181,6 +1181,7 @@ dependencies = [
  "openssl",
  "oqs",
  "p256",
+ "pkcs1",
  "rand 0.8.5",
  "ring",
  "rsa",
