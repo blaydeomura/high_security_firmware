@@ -99,118 +99,134 @@ pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<Signatur
 
 
 
-
-pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &Wallet) -> io::Result<()> {
+pub fn verify(name: &str, file_path: &str, signature: SignatureResult, wallet: &Wallet) -> io::Result<bool> {
     let persona = wallet.get_persona(&name.to_lowercase())
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
 
-    let algorithm = crate::persona::get_sig_algorithm(persona.get_cs_id()).expect("Failed to get signature algorithm");
+    let algorithm = persona::get_sig_algorithm(persona.get_cs_id())?;
 
-
-    // Read the signature file
-    let signature_bytes = fs::read(signature_file_path)?;
-
-    // Read and hash the file's content
-    let mut file = File::open(file_path)?;
+    let mut file = fs::File::open(file_path)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
-    let hash_result_vec: Vec<u8> = crate::persona::get_hash(persona.get_cs_id(), &buffer)?;
 
-    // Verification process according to the algorithm
+    let hash_result_vec: Vec<u8> = persona::get_hash(persona.get_cs_id(), &buffer)?;
+
     match algorithm {
-        Algorithm::QuantumSafe(qs_algo) => {
-            let sig = oqs::sig::Sig::new(qs_algo).expect("Failed to create Sig object");
-            let signature_ref = sig.signature_from_bytes(&signature_bytes).ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature bytes"))?;
+        persona::Algorithm::QuantumSafe(_) => {
+            // Quantum-safe verification logic...
+            Err(io::Error::new(io::ErrorKind::Other, "Quantum-safe verification not implemented"))
+        },
+        persona::Algorithm::RSA2048 => {
+            let public_key_bytes = persona
+                .get_rsa_pk_bytes() // Assuming this method exists and retrieves the RSA public key bytes
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "RSA public key not found"))?;
+            
+            let public_key = RsaPublicKey::from_pkcs1_der(public_key_bytes)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
 
-            // Use the new method to get a direct reference to the PublicKey for quantum-safe algorithms
-            if let Some(pk_ref) = persona.get_quantum_safe_pk_ref() {
-                sig.verify(&hash_result_vec, signature_ref, pk_ref)
-                   .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
+            let padding = PaddingScheme::new_pkcs1v15_sign(None);
+            if let SignatureResult::RSA(signature_bytes) = signature {
+                public_key.verify(padding, &hash_result_vec, &signature_bytes)
+                    .map(|_| true)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
             } else {
-                return Err(io::Error::new(io::ErrorKind::NotFound, "Quantum-safe public key not found"));
+                Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature type for RSA"))
             }
         },
-        Algorithm::Ed25519 => {
-            // Placeholder for Ed25519 verification
-            todo!()
-        },
-        Algorithm::RSA2048 => {
-            // Placeholder for RSA verification
-            todo!()
-        },
-        Algorithm::ECDSAP256 => {
-            // Placeholder for ECDSA verification
-            todo!()
-        },
-        _ => return Err(io::Error::new(io::ErrorKind::Unsupported, "Unsupported algorithm for verification")),
-    }
+        persona::Algorithm::ECDSAP256 => {
+            let public_key_bytes = persona
+                .get_ecdsa_pk_bytes() // Assuming this method exists
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "ECDSA public key not found"))?;
 
-    Ok(())
+            let verifying_key = VerifyingKey::from_sec1_bytes(public_key_bytes)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+            if let SignatureResult::ECDSA(signature_bytes) = signature {
+                let signature = P256Signature::from_der(&signature_bytes)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+                verifying_key.verify(&hash_result_vec, &signature)
+                    .map(|_| true)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))
+            } else {
+                Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature type for ECDSA"))
+            }
+        },
+        persona::Algorithm::Ed25519 => {
+            // Ed25519 verification logic...
+            if let SignatureResult::Ed25519(signature) = signature {
+                let public_key_bytes = persona
+                    .get_ed25519_pk_bytes()
+                    .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Ed25519 public key not found"))?;
+                
+                let public_key = ed25519_dalek::PublicKey::from_bytes(public_key_bytes)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+                public_key.verify(&hash_result_vec, &signature)
+                    .map(|_| true)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, "Verification failed"))
+            } else {
+                Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature type for Ed25519"))
+            }
+        }
+    }
 }
 
 
-
-
-// pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
-//     // get the correct persona 
-//     let persona = wallet.get_persona(&name.to_lowercase())
-//         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
-
-//     // get the algo with the corresponding persona
-//     let algorithm = get_sig_algorithm(persona.get_cs_id())?;
-//     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
-
-//     // read the file
-//     let mut file = File::open(file_path)?;
-//     let mut buffer = Vec::new();
-//     file.read_to_end(&mut buffer)?;
-
-//     // hash the file's content and convert the result to Vec<u8> for uniform handling
-//     let hash_result_vec: Vec<u8> = get_hash(persona.get_cs_id(), &buffer)?;
-
-//     // signing
-//     let signature = sig_algo.sign(&hash_result_vec, persona.get_sk())
-//         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
-
-//     // directly write the signature bytes to a file
-//     let signature_file_name = format!("{}_{}.sig", &name.to_lowercase(), Path::new(file_path).file_name().unwrap().to_string_lossy());
-//     let signature_dir = "signatures";
-//     fs::create_dir_all(signature_dir)?;
-//     let signature_file_path = Path::new(signature_dir).join(signature_file_name);
-//     fs::write(signature_file_path, &signature)?;
-
-//     Ok(())
-// }
-
 // pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &Wallet) -> io::Result<()> {
-//     // get the correct persona
 //     let persona = wallet.get_persona(&name.to_lowercase())
 //         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
 
-//     // get the correct corresponding algo based on persona
-//     let algorithm = get_sig_algorithm(persona.get_cs_id()).unwrap();
-//     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
+//     let algorithm = crate::persona::get_sig_algorithm(persona.get_cs_id()).expect("Failed to get signature algorithm");
 
-//     // read the signature bytes from the file
-//     let signature_bytes = std::fs::read(signature_file_path)?;
 
-//     // hash the file's content using the same hash function as was used during signing
+//     // Read the signature file
+//     let signature_bytes = fs::read(signature_file_path)?;
+
+//     // Read and hash the file's content
 //     let mut file = File::open(file_path)?;
 //     let mut buffer = Vec::new();
 //     file.read_to_end(&mut buffer)?;
+//     let hash_result_vec: Vec<u8> = crate::persona::get_hash(persona.get_cs_id(), &buffer)?;
 
-//     let hash_result_vec: Vec<u8> = get_hash(persona.get_cs_id(), &buffer)?;
+//     // Verification process according to the algorithm
+//     match algorithm {
+//         Algorithm::QuantumSafe(qs_algo) => {
+//             let sig = oqs::sig::Sig::new(qs_algo).expect("Failed to create Sig object");
+//             let signature_ref = sig.signature_from_bytes(&signature_bytes).ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature bytes"))?;
 
-//     // convert raw signature bytes into a SignatureRef for verification
-//     let signature_ref = sig_algo.signature_from_bytes(&signature_bytes)
-//         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature bytes"))?;
-
-//     // perform the verification
-//     sig_algo.verify(&hash_result_vec, signature_ref, persona.get_pk())
-//         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e)))?;
+//             // Use the new method to get a direct reference to the PublicKey for quantum-safe algorithms
+//             if let Some(pk_ref) = persona.get_quantum_safe_pk_ref() {
+//                 sig.verify(&hash_result_vec, signature_ref, pk_ref)
+//                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
+//             } else {
+//                 return Err(io::Error::new(io::ErrorKind::NotFound, "Quantum-safe public key not found"));
+//             }
+//         },
+//         Algorithm::Ed25519 => {
+//             // Placeholder for Ed25519 verification
+//             todo!()
+//         },
+//         Algorithm::RSA2048 => {
+//             // Placeholder for RSA verification
+//             todo!()
+//         },
+//         Algorithm::ECDSAP256 => {
+//             // Placeholder for ECDSA verification
+//             todo!()
+//         },
+//         _ => return Err(io::Error::new(io::ErrorKind::Unsupported, "Unsupported algorithm for verification")),
+//     }
 
 //     Ok(())
 // }
+
+
+
+
+
+
+
 
 
 
