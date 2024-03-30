@@ -6,20 +6,20 @@ use std::path::Path;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use ed25519_dalek::Signer;
-// use oqs::sig::Signature;
-// use oqs::sig::Sig;
 use oqs::sig::{self, Sig}; // Make sure to import the oqs crate correctly
-
+use sha2::Sha256;
 use crate::persona::{self, Algorithm, Persona};
+
+use rsa::{Pkcs1PrivateKey, Pkcs1PublicKey, PaddingScheme};
+use p256::ecdsa::{SigningKey, signature::Signer as _};
 
 // This is because each sign function returns something different
 enum SignatureResult {
     QuantumSafe(oqs::sig::Signature),
     Ed25519(ed25519_dalek::Signature),
-    // add in other two dignatures
+    RSA(Vec<u8>),
+    ECDSA(Vec<u8>),
 }
-
-
 
 
 
@@ -47,12 +47,30 @@ pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<Signatur
             }
         },
         Algorithm::RSA2048 => {
-            // Placeholder for RSA signing
-            todo!()
+            let private_key_bytes = persona
+                .get_rsa_sk() // Assuming this method exists and retrieves the RSA private key bytes
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "RSA private key not found"))?;
+        
+            let private_key = Pkcs1PrivateKey::from_der(private_key_bytes)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        
+            let padding = PaddingScheme::new_pkcs1v15_sign(None); // Choosing PKCS#1 v1.5
+            let rsa_signature = private_key.sign(padding, &hash_result_vec)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        
+            Ok(SignatureResult::RSA(rsa_signature))
         },
         Algorithm::ECDSAP256 => {
-            // Placeholder for ECDSA signing
-            todo!()
+            let secret_key_bytes = persona
+                .get_ecdsa_sk() // Assuming this method exists and retrieves the ECDSA private key bytes
+                .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "ECDSA private key not found"))?;
+        
+            let signing_key = SigningKey::from_bytes(secret_key_bytes)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        
+            let ecdsa_signature = signing_key.sign(&hash_result_vec);
+        
+            Ok(SignatureResult::ECDSA(ecdsa_signature.to_der().as_bytes().to_vec()))
         },
         persona::Algorithm::Ed25519 => {
             let secret_key_bytes = persona
@@ -78,146 +96,6 @@ pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<Signatur
 
     Ok(signature)
 }
-
-
-
-
-
-// pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<Vec<u8>> {
-// pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<SignatureResult> {
-// // pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
-
-//     // Retrieve the Persona based on name
-//     let persona = wallet.get_persona(&name.to_lowercase())
-//         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
-
-//     // Determine the quantum-safe algorithm to use based on the persona's cs_id
-//     let algorithm = persona::get_sig_algorithm(persona.get_cs_id())?;
-
-//     // Open and read the file to be signed
-//     let mut file = fs::File::open(file_path)?;
-//     let mut buffer = Vec::new();
-//     file.read_to_end(&mut buffer)?;
-
-//     // Hash the file's content (Example uses SHA-256 for simplicity)
-//     let hash_result_vec: Vec<u8> = persona::get_hash(persona.get_cs_id(), &buffer)?;
-
-//     // Perform the signing operation
-//     let signature = match algorithm {
-//         persona::Algorithm::QuantumSafe(qs_algo) => {
-//             let sig = Sig::new(qs_algo).expect("Failed to create Sig object for quantum-safe algorithm");
-
-//             // Assuming persona.get_quantum_safe_sk_ref() correctly retrieves a reference to the secret key
-//             if let Some(sk_ref) = persona.get_quantum_safe_sk_ref() {
-//                 // Sign the hashed content using the quantum-safe secret key
-//                 sig.sign(&hash_result_vec, sk_ref)
-//                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
-//             } else {
-//                 return Err(io::Error::new(io::ErrorKind::NotFound, "Quantum-safe secret key not found"));
-//             }
-//         },
-//         Algorithm::RSA2048 => {
-//             // Placeholder for RSA signing
-//             todo!()
-//         },
-//         Algorithm::ECDSAP256 => {
-//             // Placeholder for ECDSA signing
-//             todo!()
-//         },
-//         persona::Algorithm::Ed25519 => {
-//             // todo!()
-//             // let secret_key_bytes = persona
-//             //     .get_ed25519_sk_bytes()
-//             //     .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Ed25519 secret key not found"))?;
-//             // let secret_key = ed25519_dalek::SecretKey::from_bytes(secret_key_bytes)?;
-//             // let public_key = ed25519_dalek::PublicKey::from(&secret_key);
-//             // let keypair = ed25519_dalek::Keypair { secret: secret_key, public: public_key };
-//             // // let ed25519_signature = keypair.sign(&hash_result_vec).as_ref().to_vec();
-//             // let ed25519_signature = keypair.sign(&hash_result_vec);
-//             // ed25519_signature
-//             let secret_key_bytes = persona
-//                 .get_ed25519_sk_bytes()
-//                 .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Ed25519 secret key not found"))?;
-//             let secret_key = ed25519_dalek::SecretKey::from_bytes(secret_key_bytes)?;
-//             let keypair = ed25519_dalek::Keypair { secret: secret_key, public: ed25519_dalek::PublicKey::from(&secret_key) };
-//             let ed25519_signature = keypair.sign(&hash_result_vec);
-
-//             // Wrap the Ed25519 signature in the enum
-//             SignatureResult::Ed25519(ed25519_signature)
-//         }
-
-//     };
-
-//     // Write the signature bytes to a file
-//     let signature_file_name = format!("{}_{}.sig", &name.to_lowercase(), Path::new(file_path).file_stem().unwrap().to_string_lossy());
-//     let signature_dir = "signatures";
-//     fs::create_dir_all(signature_dir)?;
-//     let signature_file_path = Path::new(signature_dir).join(signature_file_name);
-//     fs::write(signature_file_path, &signature)?;
-
-//     Ok((signature.into_vec()))
-// }
-
-
-
-
-
-// pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<()> {
-//     let persona = wallet.get_persona(&name.to_lowercase())
-//         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
-
-//     let algorithm = crate::persona::get_sig_algorithm(persona.get_cs_id())?;
-
-//     // Read the file to be signed
-//     let mut file = File::open(file_path)?;
-//     let mut buffer = Vec::new();
-//     file.read_to_end(&mut buffer)?;
-
-//     let hash_result_vec: Vec<u8> = crate::persona::get_hash(persona.get_cs_id(), &buffer)?;
-
-//     // Signing process according to the algorithm
-//     let signature = match algorithm {
-//         Algorithm::QuantumSafe(qs_algo) => {
-//             let sig = oqs::sig::Sig::new(qs_algo).expect("Failed to create Sig object");
-//             // Using the new method to get a direct reference to the SecretKey for quantum-safe algorithms
-//             if let Some(sk_ref) = persona.get_quantum_safe_sk_ref() {
-//                 sig.sign(&hash_result_vec, sk_ref)
-//                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
-//             } else {
-//                 return Err(io::Error::new(io::ErrorKind::NotFound, "Quantum-safe secret key not found"));
-//             }
-//         },
-//         Algorithm::Ed25519 => {
-//             use ed25519_dalek::{Signer, SecretKey, Keypair};
-//             let secret_key_bytes = persona.get_ed25519_sk_bytes().ok_or(io::Error::new(io::ErrorKind::NotFound, "Ed25519 secret key not found"))?;
-//             let secret_key = SecretKey::from_bytes(secret_key_bytes).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
-//             let public_key = persona.get_ed25519_pk_bytes().and_then(|pk| ed25519_dalek::PublicKey::from_bytes(pk).ok()).ok_or(io::Error::new(io::ErrorKind::NotFound, "Ed25519 public key not found"))?;
-//             let keypair = Keypair { secret: secret_key, public: public_key };
-        
-//             let signature = keypair.sign(&hash_result_vec);
-//             signature.to_bytes().to_vec()
-//         },
-//         Algorithm::RSA2048 => {
-//             // Placeholder for RSA signing
-//             todo!()
-//         },
-//         Algorithm::ECDSAP256 => {
-//             // Placeholder for ECDSA signing
-//             todo!()
-//         },
-//     };
-
-//     // Write the signature bytes to a file
-//     let signature_file_name = format!("{}_{}.sig", &name.to_lowercase(), Path::new(file_path).file_stem().unwrap().to_string_lossy());
-//     let signature_dir = "signatures";
-//     fs::create_dir_all(signature_dir)?;
-//     let signature_file_path = Path::new(signature_dir).join(signature_file_name);
-//     fs::write(signature_file_path, &signature)?;
-
-//     Ok(())
-// }
-
-
 
 
 
