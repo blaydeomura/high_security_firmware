@@ -6,14 +6,7 @@
 // cs_id: 6 | sig: RSA        | hash: sha256
 // cs_id: 7 | sig: Ecdsa      | hash: sha256
 
-extern crate ed25519_dalek;
-
-
-// use serde::{Serialize, Deserialize};
-// use oqs::sig::{PublicKey as OqsPublicKey, SecretKey as OqsSecretKey};
-// use ed25519_dalek::{Keypair as Ed25519Keypair, PublicKey as Ed25519PublicKey, SecretKey as Ed25519SecretKey};
-// use rsa::{RsaPrivateKey, RsaPublicKey, traits::PaddingScheme};
-// use p256::ecdsa::{SigningKey as EcdsaSigningKey, signature::Signer};
+// extern crate ed25519_dalek;
 
 use oqs::sig;
 use std::io::{self, ErrorKind};
@@ -35,13 +28,6 @@ enum CryptoPublicKey {
     ECDSA(Vec<u8>),  
 }
 
-// #[derive(Serialize, Deserialize, Debug, Clone)]
-// enum CryptoPrivateKey {
-//     QuantumSafe(sig::SecretKey),
-//     Ed25519(Vec<u8>), // PKCS#8 encoding of the private key
-//     RSA(rsa::RsaPrivateKey),
-//     ECDSA(p256::ecdsa::SigningKey),
-// }
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum CryptoPrivateKey {
     QuantumSafe(sig::SecretKey),
@@ -150,6 +136,7 @@ impl Persona {
         self.cs_id
     }
 
+    // MAYBE TAKOUR QUANTUM??
     pub fn get_sk(&self) -> Result<Vec<u8>, io::Error> {
         match &self.sk {
             // return the byte slice as Vec<u8>
@@ -157,6 +144,21 @@ impl Persona {
             CryptoPrivateKey::Ed25519(bytes) | CryptoPrivateKey::RSA(bytes) | CryptoPrivateKey::ECDSA(bytes) => Ok(bytes.clone()),
             // Error handling for unsupported or missing keys
             _ => Err(io::Error::new(io::ErrorKind::NotFound, "Secret key not found")),
+        }
+    }
+
+    // Note: because oqs supports direct signing and verify, we need to have seperate getters for pk and sk depending on algo
+    pub fn get_quantum_safe_sk_ref(&self) -> Option<&sig::SecretKey> {
+        match &self.sk {
+            CryptoPrivateKey::QuantumSafe(sk) => Some(sk),
+            _ => None,
+        }
+    }
+
+    pub fn get_quantum_safe_pk_ref(&self) -> Option<&sig::PublicKey> {
+        match &self.pk {
+            CryptoPublicKey::QuantumSafe(pk) => Some(pk),
+            _ => None,
         }
     }
 
@@ -237,20 +239,14 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
 
         },
         7 => {
-            // let signing_key = EcdsaSigningKey::random(&mut OsRng{});  // Generate a new ECDSA signing key
-            // let verify_key = signing_key.verifying_key();
-            // let vk_der = verify_key.to_encoded_point(false).as_bytes().to_vec();
-            // Ok((CryptoPublicKey::ECDSA(vk_der), CryptoPrivateKey::ECDSA(signing_key)))
-
-
-            let mut rng = OsRng::default();
+            let mut _rng = OsRng::default();
             let signing_key = EcdsaSigningKey::random(&mut OsRng{});  // Generate a new ECDSA signing key
             let verify_key = signing_key.verifying_key(); // Derive the corresponding verifying (public) key
 
             // Serialize the verifying (public) key to an uncompressed form
             let vk_der = verify_key.to_encoded_point(false).as_bytes().to_vec();
 
-            //-----NEED TO STORE PRIVATE KEYS SAFELT------
+            //-----NEED TO STORE PRIVATE KEYS SAFELY------
             let sk_bytes = signing_key.to_bytes();
 
             Ok((CryptoPublicKey::ECDSA(vk_der), CryptoPrivateKey::ECDSA(sk_bytes.to_vec())))
@@ -286,15 +282,26 @@ pub fn get_hash(cs_id: usize, buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Erro
     }
 }
 
-// Generates correct signature algorithm based on cs_id
-pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error> {
-    match cs_id {
-        1 | 2 => Ok(sig::Algorithm::Dilithium2),
-        3 | 4 => Ok(sig::Algorithm::Falcon512),
+// For choosing the right signature algorithms
+pub enum Algorithm {
+    QuantumSafe(oqs::sig::Algorithm),
+    Ed25519,
+    RSA2048,
+    ECDSAP256,
+}
 
-        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4"))
+// Generates correct signature algorithm based on cs_id
+pub fn get_sig_algorithm(cs_id: usize) -> Result<Algorithm, std::io::Error> {
+    match cs_id {
+        1 => Ok(Algorithm::QuantumSafe(oqs::sig::Algorithm::Dilithium2)),
+        2 => Ok(Algorithm::QuantumSafe(oqs::sig::Algorithm::Falcon512)),
+        5 => Ok(Algorithm::Ed25519),
+        6 => Ok(Algorithm::RSA2048),
+        7 => Ok(Algorithm::ECDSAP256),
+        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
     }
 }
+
 
 
 
