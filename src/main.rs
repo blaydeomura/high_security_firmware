@@ -44,9 +44,9 @@ fn main() {
                 Err(e) => println!("Error signing file: {}", e),
             }
         },
-        Commands::Verify { name, file, signature } => {
+        Commands::Verify { name, header, file } => {
             // Directly pass the signature file path to the verify function
-            let result = verify(&name, &file, &signature, &wallet);
+            let result = verify(&name, &header, &file,&wallet);
             match result {
                 Ok(_) => println!("Verification successful."),
                 Err(e) => println!("Verification failed: {}", e),

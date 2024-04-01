@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use crate::wallet::Wallet;
-use crate::persona::{get_sig_algorithm, get_hash, Persona};
+use crate::persona::{get_hash, get_sig_algorithm, Persona};
 use std::fs;
 use std::path::Path;
 use std::io::ErrorKind;
@@ -21,6 +21,35 @@ struct Header {
     contents: Vec<u8>
 }
 
+impl Header {
+    // Checks if public keys match
+    fn verify_sender(&self, persona: &Persona) {
+        assert_eq!(self.signer, persona.get_pk().clone(), "Verification failed: invalid public key");
+    }
+
+    // Checks if length field matches actaul length of message
+    fn verify_message_len(&self, length: usize) {
+        assert_eq!(self.length, length, "Verification failed: invalid message length");
+    }
+
+    // Checks if hash of file contents matches expected hash
+    fn verify_hash(&self, contents: &Vec<u8>) {
+        let generated_hash = get_hash(self.cs_id, contents).unwrap();
+        assert!(do_vecs_match(&generated_hash, &self.file_hash), "Verification failed: invalid file contents");
+    }
+
+    // Checks if signature is valid
+    fn verify_signature(&self, sig_algo: Sig, persona: &Persona) {
+        assert!(sig_algo.verify(&self.file_hash, &self.signature, persona.get_pk()).is_ok(), "Verification failed: invalid signature");
+    }
+}
+
+// Helper function to check if two vectors are equal
+fn do_vecs_match<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
+    let matching = a.iter().zip(b.iter()).filter(|&(a, b)| a == b).count();
+    matching == a.len() && matching == b.len()
+}
+
 // Constructs a header with the given information
 fn construct_header(persona: &Persona, file_hash: Vec<u8>, signature: Signature, length: usize, contents: Vec<u8>) -> Header {
     Header {
@@ -34,6 +63,7 @@ fn construct_header(persona: &Persona, file_hash: Vec<u8>, signature: Signature,
     }
 }
 
+// Signs a file and construct a header file
 pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()> {
     // get the correct persona 
     let persona = wallet.get_persona(&name.to_lowercase())
@@ -66,7 +96,8 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
     Ok(())
 }
 
-pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &Wallet) -> io::Result<()> {
+// Verifies fields of a header file
+pub fn verify(name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
     // get the correct persona
     let persona = wallet.get_persona(&name.to_lowercase())
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
@@ -75,23 +106,20 @@ pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &W
     let algorithm = get_sig_algorithm(persona.get_cs_id()).unwrap();
     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
 
-    // read the signature bytes from the file
-    let signature_bytes = std::fs::read(signature_file_path)?;
+    // deserialize header object
+    let header = fs::read_to_string(header)?;
+    let header: Header = serde_json::from_str(&header)?;
 
-    // hash the file's content using the same hash function as was used during signing
-    let mut file = File::open(file_path)?;
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)?;
+    // read the file
+    let mut in_file = File::open(file)?;
+    let mut contents = Vec::new();
+    let length = in_file.read_to_end(&mut contents)?;
 
-    let hash_result_vec: Vec<u8> = get_hash(persona.get_cs_id(), &buffer)?;
-
-    // convert raw signature bytes into a SignatureRef for verification
-    let signature_ref = sig_algo.signature_from_bytes(&signature_bytes)
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature bytes"))?;
-
-    // perform the verification
-    sig_algo.verify(&hash_result_vec, signature_ref, persona.get_pk())
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e)))?;
+    // verify each field
+    header.verify_sender(&persona);
+    header.verify_message_len(length);
+    header.verify_hash(&contents);
+    header.verify_signature(sig_algo, &persona);
 
     Ok(())
 }

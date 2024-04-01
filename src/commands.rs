@@ -46,13 +46,13 @@ pub enum Commands {
         #[arg(short, long)]
         name: String,
         
-        // File to verify
+        // Path to header file with verification info
+        #[arg(short='s', long)]
+        header: String,
+
+        // Path to file to verify
         #[arg(short, long)]
         file: String,
-        
-        // Signature to verify against
-        #[arg(short, long)]
-        signature: String,
     },
     RemoveSignature {
         // Signature file to remove
