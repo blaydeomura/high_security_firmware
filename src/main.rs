@@ -7,7 +7,8 @@ use rust_cli::file_ops::{self, remove_signature, verify, list_signature_files, l
 fn main() {
     let args = Args::parse();
     let mut wallet = Wallet::new();
-    wallet.load_wallet(String::from("wallet")).unwrap_or_else(|_| {
+
+    wallet.load_wallet("wallet").unwrap_or_else(|_| {
         panic!("Error loading wallet");
     });
 
