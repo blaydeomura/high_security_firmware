@@ -2,7 +2,7 @@ use clap::Parser;
 use rust_cli::wallet::Wallet;
 use rust_cli::commands::{self, Args, Commands};
 use rust_cli::persona::Persona;
-use rust_cli::file_ops::{remove_signature, sign, verify, list_signature_files, list_files};
+use rust_cli::file_ops::{self, remove_signature, verify, list_signature_files, list_files};
 
 fn main() {
     let args = Args::parse();
@@ -35,8 +35,8 @@ fn main() {
                 }
             }
         },
-        Commands::Sign { name, input, output } => {
-            let result = sign(&name, &input, &output, &wallet);
+        Commands::Sign { name, sign, header } => {
+            let result = file_ops::sign(&name, &sign, &header, &wallet);
             match result {
                 Ok(_) => {
                     println!("Signature created successfully.");
@@ -44,9 +44,9 @@ fn main() {
                 Err(e) => println!("Error signing file: {}", e),
             }
         },
-        Commands::Verify { name, header, file } => {
+        Commands::Verify { name, sign, header } => {
             // Directly pass the signature file path to the verify function
-            let result = verify(&name, &header, &file,&wallet);
+            let result = verify(&name, &header, &sign ,&wallet);
             match result {
                 Ok(_) => println!("Verification successful."),
                 Err(e) => println!("Verification failed: {}", e),
