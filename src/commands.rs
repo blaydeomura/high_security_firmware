@@ -35,7 +35,10 @@ pub enum Commands {
         name: String,
         // File to sign
         #[arg(short, long)]
-        file: String,
+        sign: String,
+        // Signature output
+        #[arg(short='o', long)]
+        header: String
     },
     // Verifies the signature of a file with a provided public key
     Verify {
@@ -43,13 +46,13 @@ pub enum Commands {
         #[arg(short, long)]
         name: String,
         
-        // File to verify
-        #[arg(short, long)]
-        file: String,
-        
-        // Signature to verify against
-        #[arg(short, long)]
-        signature: String,
+        // Path to file to verify
+        #[arg(short='s', long)]
+        sign: String,
+
+        // Path to header file with verification info
+        #[arg(short='o', long)]
+        header: String,
     },
     RemoveSignature {
         // Signature file to remove

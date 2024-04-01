@@ -26,13 +26,14 @@ cargo run -- generate --name <name> --cs-id <id>
 ```
 
 * Sign a file using the specified persona
+    * Header file must be a json file
 ```
-cargo run -- sign --name <name> --file <path to file>
+cargo run -- sign --name <name of signer> --sign <file to sign> --header <header file>
 ```
 
-* Verify a file based on public key and signature
+* Verify a file based on signer and header file
 ```
-cargo run -- verify --name <name> --file <path to file to verify> --signature <path to file containing signature>
+cargo run -- verify --name <name of signer> --sign <signed file> --header <header file>
 ```
 
 * Remove a persona from wallet
