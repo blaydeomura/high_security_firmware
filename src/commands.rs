@@ -51,7 +51,7 @@ pub enum Commands {
         sign: String,
 
         // Path to header file with verification info
-        #[arg(short, long)]
+        #[arg(short='o', long)]
         header: String,
     },
     RemoveSignature {
