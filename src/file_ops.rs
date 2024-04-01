@@ -9,9 +9,12 @@ use ed25519_dalek::Signer;
 use oqs::sig::{self, Sig}; // Make sure to import the oqs crate correctly
 use sha2::Sha256;
 use crate::persona::{self, Algorithm, Persona};
+use rsa::{RsaPrivateKey, RsaPublicKey, pkcs8::{DecodePrivateKey, DecodePublicKey}};
+use rsa::traits::PaddingScheme;
 
-use rsa::{Pkcs1PrivateKey, Pkcs1PublicKey, PaddingScheme};
+
 use p256::ecdsa::{SigningKey, signature::Signer as _};
+
 
 // This is because each sign function returns something different
 enum SignatureResult {
@@ -46,16 +49,31 @@ pub fn sign(name: &str, file_path: &str, wallet: &Wallet) -> io::Result<Signatur
                 Err(io::Error::new(io::ErrorKind::NotFound, "Quantum-safe secret key not found"))
             }
         },
+        // Algorithm::RSA2048 => {
+        //     let private_key_bytes = persona
+        //         .get_rsa_sk() // Assuming this method exists and retrieves the RSA private key bytes
+        //         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "RSA private key not found"))?;
+        
+        //     let private_key = Pkcs1PrivateKey::from_der(private_key_bytes)
+        //         .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        
+        //     let padding = PaddingScheme::new_pkcs1v15_sign(None); // Choosing PKCS#1 v1.5
+        //     let rsa_signature = private_key.sign(padding, &hash_result_vec)
+        //         .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+        
+        //     Ok(SignatureResult::RSA(rsa_signature))
+        // },
         Algorithm::RSA2048 => {
             let private_key_bytes = persona
-                .get_rsa_sk() // Assuming this method exists and retrieves the RSA private key bytes
+                .get_rsa_sk() // Ensure this retrieves the private key bytes in PKCS#8 format
                 .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "RSA private key not found"))?;
         
-            let private_key = Pkcs1PrivateKey::from_der(private_key_bytes)
+            let private_key = RsaPrivateKey::from_pkcs8_der(private_key_bytes)
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
         
-            let padding = PaddingScheme::new_pkcs1v15_sign(None); // Choosing PKCS#1 v1.5
-            let rsa_signature = private_key.sign(padding, &hash_result_vec)
+            let padding = PaddingScheme::new_pkcs1v15_sign(None);
+            let mut rng = rand::thread_rng();
+            let rsa_signature = private_key.sign(padding, &hash_result_vec, &mut rng)
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
         
             Ok(SignatureResult::RSA(rsa_signature))
@@ -171,58 +189,6 @@ pub fn verify(name: &str, file_path: &str, signature: SignatureResult, wallet: &
         }
     }
 }
-
-
-// pub fn verify(name: &str, file_path: &str, signature_file_path: &str, wallet: &Wallet) -> io::Result<()> {
-//     let persona = wallet.get_persona(&name.to_lowercase())
-//         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
-
-//     let algorithm = crate::persona::get_sig_algorithm(persona.get_cs_id()).expect("Failed to get signature algorithm");
-
-
-//     // Read the signature file
-//     let signature_bytes = fs::read(signature_file_path)?;
-
-//     // Read and hash the file's content
-//     let mut file = File::open(file_path)?;
-//     let mut buffer = Vec::new();
-//     file.read_to_end(&mut buffer)?;
-//     let hash_result_vec: Vec<u8> = crate::persona::get_hash(persona.get_cs_id(), &buffer)?;
-
-//     // Verification process according to the algorithm
-//     match algorithm {
-//         Algorithm::QuantumSafe(qs_algo) => {
-//             let sig = oqs::sig::Sig::new(qs_algo).expect("Failed to create Sig object");
-//             let signature_ref = sig.signature_from_bytes(&signature_bytes).ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Invalid signature bytes"))?;
-
-//             // Use the new method to get a direct reference to the PublicKey for quantum-safe algorithms
-//             if let Some(pk_ref) = persona.get_quantum_safe_pk_ref() {
-//                 sig.verify(&hash_result_vec, signature_ref, pk_ref)
-//                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?
-//             } else {
-//                 return Err(io::Error::new(io::ErrorKind::NotFound, "Quantum-safe public key not found"));
-//             }
-//         },
-//         Algorithm::Ed25519 => {
-//             // Placeholder for Ed25519 verification
-//             todo!()
-//         },
-//         Algorithm::RSA2048 => {
-//             // Placeholder for RSA verification
-//             todo!()
-//         },
-//         Algorithm::ECDSAP256 => {
-//             // Placeholder for ECDSA verification
-//             todo!()
-//         },
-//         _ => return Err(io::Error::new(io::ErrorKind::Unsupported, "Unsupported algorithm for verification")),
-//     }
-
-//     Ok(())
-// }
-
-
-
 
 
 
