@@ -10,13 +10,13 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use crate::persona::Algorithm;
 use ed25519_dalek::{Signature as Ed25519Signature, VerifyingKey, Verifier, SignatureError};
+use p256::{PublicKey as P256PublicKey, ecdsa::{VerifyingKey as P256VerifyingKey, signature::Verifier as P256Verifier, Signature as P256Signature}};
+use std::convert::TryFrom;
+use rsa::{RsaPublicKey, pkcs8::DecodePublicKey};
+use rsa::traits::PaddingScheme;
+use rsa::pkcs1::DecodeRsaPublicKey;
 
-
-
-
-
-
-// 1) Fix the impl header to work
+// Done || 1) Fix the impl header to work
     // - Need to change if it is get_pk for qunatum or for non quantum
 // 2) Fix construct header
 // 3) Implement sign
@@ -114,13 +114,8 @@ impl Header {
                             let signature_bytes: &[u8; 64] = self.signature.as_slice().try_into()
                                 .expect("Signature slice with incorrect length");
             
-                            // Correctly handle the Result from from_bytes
-                            // let signature = Ed25519Signature::from_bytes(signature_bytes)
-                            //     .map_err(|e| format!("Failed to create Ed25519 Signature: {}", e))?;
-                            // Assuming `signature_bytes` is &[u8; 64]
                             let signature = Ed25519Signature::try_from(&signature_bytes[..])
                                 .map_err(|e| format!("Failed to create Ed25519 Signature: {}", e.to_string()))?;
-
             
                             verifying_key.verify(&self.file_hash, &signature)
                                 .map_err(|_| "Verification failed: invalid Ed25519 signature".to_string())
@@ -134,6 +129,40 @@ impl Header {
                     Err("Ed25519 public key not found".into())
                 }
             },
+            Ok(Algorithm::RSA2048) => {
+                if let Some(pk_bytes) = persona.get_rsa_pk_bytes() {
+                    // Decode the RSA public key; assuming it's in PKCS#1 DER format
+                    let verifying_key = RsaPublicKey::from_pkcs1_der(pk_bytes)
+                        .map_err(|e| format!("Failed to parse RSA public key: {}", e))?;
+            
+                    // Hash the data before verification
+                    let hashed_data = get_hash(self.cs_id, &self.contents)
+                        .map_err(|e| format!("Failed to hash data: {}", e))?;
+            
+                    // Specify the padding for PKCS#1 v1.5 signature verification
+                    let padding = PaddingScheme::new_pkcs1v15_sign(None);
+            
+                    // Perform the signature verification
+                    verifying_key.verify(padding, &hashed_data, &self.signature)
+                        .map_err(|_| "Verification failed: invalid RSA signature".to_string())
+                } else {
+                    Err("RSA public key not found".into())
+                }
+            },
+            Ok(Algorithm::ECDSAP256) => {
+                if let Some(pk_bytes) = persona.get_ecdsa_pk_bytes() {
+                    let verifying_key = P256VerifyingKey::from_sec1_bytes(pk_bytes)
+                        .map_err(|e| format!("Failed to create ECDSA P-256 VerifyingKey: {}", e))?;
+                    
+                    let signature = P256Signature::try_from(self.signature.as_slice())
+                        .map_err(|_| "Failed to parse ECDSA P-256 signature".to_string())?;
+                    
+                    verifying_key.verify(&self.file_hash, &signature)
+                        .map_err(|_| "Verification failed: invalid ECDSA P-256 signature".to_string())
+                } else {
+                    Err("ECDSA P-256 public key not found".into())
+                }
+            }            
             Err(e) => Err(e.to_string()),
             _ => Err("Unsupported or unknown algorithm".into()),
         }
