@@ -168,7 +168,6 @@ impl Persona {
     // Method to retrieve the public key in Vec<u8> format
     pub fn get_pk(&self) -> Result<Vec<u8>, io::Error> {
         match &self.pk {
-            // For quantum-safe keys, assuming `to_bytes` method exists for serialization
             CryptoPublicKey::QuantumSafe(pk) => Ok(pk.as_ref().to_vec()),
             CryptoPublicKey::Ed25519(bytes) | CryptoPublicKey::RSA(bytes) | CryptoPublicKey::ECDSA(bytes) => Ok(bytes.clone()),
             // Error handling for unsupported or missing keys
@@ -223,7 +222,6 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
                 .to_vec();
         
             
-            //https://docs.rs/pkcs8/latest/pkcs8/struct.SecretDocument.html
             let sk_der = private_key.to_pkcs1_der()
                 .expect("Failed to serialize private key")
                 .to_bytes()

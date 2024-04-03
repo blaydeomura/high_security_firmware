@@ -12,9 +12,17 @@ use crate::persona::Algorithm;
 use ed25519_dalek::{Signature as Ed25519Signature, VerifyingKey, Verifier, SignatureError};
 use p256::{PublicKey as P256PublicKey, ecdsa::{VerifyingKey as P256VerifyingKey, signature::Verifier as P256Verifier, Signature as P256Signature}};
 use std::convert::TryFrom;
-use rsa::{RsaPublicKey, pkcs8::DecodePublicKey};
+use rsa::{RsaPublicKey, pkcs8::DecodePublicKey, pkcs1v15::Pkcs1v15Sign};
+// use rsa::pkcs1::FromRsaPublicKey;
 use rsa::traits::PaddingScheme;
 use rsa::pkcs1::DecodeRsaPublicKey;
+use rsa::pkcs1v15::{SigningKey, VerifyingKey as Pkcs1VerifyingKey};
+// use rsa::pkcs1v15;
+
+use sha2::{Sha256, Sha512, Digest};
+use rsa::traits::SignatureScheme;
+
+
 
 // Done || 1) Fix the impl header to work
     // - Need to change if it is get_pk for qunatum or for non quantum
@@ -130,24 +138,26 @@ impl Header {
                 }
             },
             Ok(Algorithm::RSA2048) => {
-                if let Some(pk_bytes) = persona.get_rsa_pk_bytes() {
-                    // Decode the RSA public key; assuming it's in PKCS#1 DER format
-                    let verifying_key = RsaPublicKey::from_pkcs1_der(pk_bytes)
-                        .map_err(|e| format!("Failed to parse RSA public key: {}", e))?;
+                todo!()
+                // if let Some(pk_bytes) = persona.get_rsa_pk_bytes() {
+                //     // Decode the RSA public key from its PKCS#1 DER format
+                //     let rsa_pub_key = RsaPublicKey::from_pkcs1_der(pk_bytes)
+                //         .map_err(|e| format!("Failed to parse RSA public key: {}", e))?;
+                    
+                //     let hashed_data = get_hash(persona.get_cs_id(), &self.contents)
+                //         .map_err(|e| format!("Failed to hash data: {}", e))?;
             
-                    // Hash the data before verification
-                    let hashed_data = get_hash(self.cs_id, &self.contents)
-                        .map_err(|e| format!("Failed to hash data: {}", e))?;
+                //     // Assuming self.signature is a Vec<u8> containing the raw signature bytes
+                //     let signature = &self.signature[..]; // Convert Vec<u8> to &[u8] for verification
             
-                    // Specify the padding for PKCS#1 v1.5 signature verification
-                    let padding = PaddingScheme::new_pkcs1v15_sign(None);
-            
-                    // Perform the signature verification
-                    verifying_key.verify(padding, &hashed_data, &self.signature)
-                        .map_err(|_| "Verification failed: invalid RSA signature".to_string())
-                } else {
-                    Err("RSA public key not found".into())
-                }
+                //     // Perform the signature verification using the RSA public key
+                //     match rsa_pub_key.verify(hashed_data, signature) {
+                //         Ok(_) => Ok(()),
+                //         Err(_) => Err("Verification failed: invalid RSA signature".into()),
+                //     }
+                // } else {
+                //     Err("RSA public key not found".into())
+                // }
             },
             Ok(Algorithm::ECDSAP256) => {
                 if let Some(pk_bytes) = persona.get_ecdsa_pk_bytes() {
@@ -189,10 +199,6 @@ fn construct_header(persona: &Persona, file_hash: Vec<u8>, signature: Signature,
 }
 
 
-
-
-
-
 pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()> {
     // Retrieve the correct persona
     let persona = wallet.get_persona(&name.to_lowercase())
@@ -210,28 +216,29 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
     // Perform signing based on the algorithm
     let signature = match algorithm {
         Algorithm::QuantumSafe(algo) => {
-            // Use OQS to sign
-            let sig = oqs::sig::Sig::new(algo).expect("Failed to create Sig object");
-            let signature = sig.sign(&file_hash, persona.get_sk().unwrap()).expect("Signing failed");
+            let sig = OqsSig::new(algo).expect("Failed to create Sig object");
+            let secret_key = persona.get_quantum_safe_sk().expect("Secret key not found");
+            let signature = sig.sign(&file_hash, secret_key).expect("Signing failed");
             SignatureResult::QuantumSafe(signature)
         },
         Algorithm::Ed25519 => {
-            // Use Ed25519 to sign
-            // This is a placeholder; you'll need to replace it with actual signing logic
-            let signature = ed25519_dalek::Signature::new(); // Placeholder
+            let secret_key_bytes = persona.get_ed25519_sk_bytes().expect("Secret key bytes not found");
+            let keypair = Ed25519Keypair::from_bytes(secret_key_bytes).expect("Failed to create keypair");
+            let signature: Ed25519Signature = keypair.sign(&file_hash);
             SignatureResult::Ed25519(signature)
         },
         Algorithm::RSA2048 => {
-            // Use RSA to sign
-            // This is a placeholder; you'll need to replace it with actual signing logic
-            let signature = vec![]; // Placeholder
+            let secret_key_bytes = persona.get_rsa_sk().expect("RSA secret key not found");
+            let private_key = RsaPrivateKey::from_pkcs1_der(secret_key_bytes).expect("Failed to parse RSA private key");
+            let padding = PaddingScheme::new_pkcs1v15_sign(Some(Sha256::new()));
+            let signature = private_key.sign(padding, &file_hash).expect("RSA signing failed");
             SignatureResult::RSA(signature)
         },
         Algorithm::ECDSAP256 => {
-            // Use ECDSA to sign
-            // This is a placeholder; you'll need to replace it with actual signing logic
-            let signature = vec![]; // Placeholder
-            SignatureResult::ECDSA(signature)
+            let secret_key_bytes = persona.get_ecdsa_sk().expect("ECDSA secret key not found");
+            let signing_key = P256SigningKey::from_bytes(secret_key_bytes).expect("Failed to create ECDSA signing key");
+            let signature = signing_key.sign(&file_hash);
+            SignatureResult::ECDSA(signature.to_der().as_bytes().to_vec())
         },
     };
 
@@ -244,7 +251,7 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
     };
 
     // Generate header
-    let header = construct_header(persona, file_hash, signature_bytes, contents.len(), contents);
+    let header = construct_header(persona, file_hash, signature_bytes.clone(), contents.len(), contents);
     let header_str = serde_json::to_string_pretty(&header)?;
 
     // Write header contents to output file
@@ -254,38 +261,70 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
     Ok(())
 }
 
-// // Signs a file and construct a header file
+
+
 // pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()> {
-//     // get the correct persona 
+//     // Retrieve the correct persona
 //     let persona = wallet.get_persona(&name.to_lowercase())
 //         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
 
-//     // get the algo with the corresponding persona
+//     // Get the algorithm corresponding to the persona
 //     let algorithm = get_sig_algorithm(persona.get_cs_id())?;
-//     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
 
-//     // read the file
+//     // Read the file contents
 //     let mut in_file = File::open(input)?;
 //     let mut contents = Vec::new();
-//     let length = in_file.read_to_end(&mut contents)?;
-
-//     // hash the file's content and convert the result to Vec<u8> for uniform handling
+//     in_file.read_to_end(&mut contents)?;
 //     let file_hash: Vec<u8> = get_hash(persona.get_cs_id(), &contents)?;
 
-//     // signing
-//     let signature = sig_algo.sign(&file_hash, persona.get_sk())
-//         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
+//     // Perform signing based on the algorithm
+//     let signature = match algorithm {
+//         Algorithm::QuantumSafe(algo) => {
+//             // Use OQS to sign
+//             let sig = oqs::sig::Sig::new(algo).expect("Failed to create Sig object");
+//             let signature = sig.sign(&file_hash, persona.get_sk().unwrap()).expect("Signing failed");
+//             SignatureResult::QuantumSafe(signature)
+//         },
+//         Algorithm::Ed25519 => {
+//             // Use Ed25519 to sign
+//             // This is a placeholder; you'll need to replace it with actual signing logic
+//             let signature = ed25519_dalek::Signature::new(); // Placeholder
+//             SignatureResult::Ed25519(signature)
+//         },
+//         Algorithm::RSA2048 => {
+//             // Use RSA to sign
+//             // This is a placeholder; you'll need to replace it with actual signing logic
+//             let signature = vec![]; // Placeholder
+//             SignatureResult::RSA(signature)
+//         },
+//         Algorithm::ECDSAP256 => {
+//             // Use ECDSA to sign
+//             // This is a placeholder; you'll need to replace it with actual signing logic
+//             let signature = vec![]; // Placeholder
+//             SignatureResult::ECDSA(signature)
+//         },
+//     };
 
-//     // generate header
-//     let header = construct_header(persona, file_hash, signature, length, contents);
+//     // Convert signature into Vec<u8> if necessary
+//     let signature_bytes = match signature {
+//         SignatureResult::QuantumSafe(sig) => sig.to_bytes(), // Assuming a to_bytes method exists
+//         SignatureResult::Ed25519(sig) => sig.to_bytes().to_vec(),
+//         SignatureResult::RSA(sig) => sig,
+//         SignatureResult::ECDSA(sig) => sig,
+//     };
+
+//     // Generate header
+//     let header = construct_header(persona, file_hash, signature_bytes, contents.len(), contents);
 //     let header_str = serde_json::to_string_pretty(&header)?;
 
-//     // write header contents to signature file
+//     // Write header contents to output file
 //     let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-//     out_file.write(&header_str.as_bytes())?;
+//     out_file.write_all(header_str.as_bytes())?;
 
 //     Ok(())
 // }
+
+
 
 // Verifies fields of a header file
 pub fn verify(name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
