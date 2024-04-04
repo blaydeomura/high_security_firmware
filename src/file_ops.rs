@@ -15,15 +15,9 @@ use p256::ecdsa::{VerifyingKey as P256VerifyingKey, Signature as P256Signature};
 use std::convert::TryFrom;
 use ring::signature::Ed25519KeyPair;
 use rsa::RsaPrivateKey;
-
-// new
-use rand::thread_rng;
-use rsa::Pkcs1v15Sign;
-use rand::rngs::OsRng;
-use rsa::traits::SignatureScheme;
-use rsa::pkcs1v15::{SigningKey};
-use rsa::sha2::{Digest, Sha256};
-use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding};
+use rsa::pkcs1v15::SigningKey;
+use rsa::sha2::Sha256;
+use rsa::signature::{RandomizedSigner, SignatureEncoding};
 
 
 
@@ -229,27 +223,19 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
         
             SignatureResult::RSA(signature.to_vec())
         },
-        // Algorithm::RSA2048 => {
-        //     let secret_key_bytes = persona.get_rsa_sk().expect("Secret key bytes not found");
-
-        //     // Decode the RSA private key from its PKCS#1 DER representation
-        //     let private_key = RsaPrivateKey::from_pkcs1_der(secret_key_bytes)
-        //         .expect("Failed to deserialize RSA Private Key");
-
-        //     // Initialize the PKCS#1 v1.5 signer with the private key and the hashing algorithm.
-        //     // The specific hashing algorithm (e.g., SHA-256) should be used here directly as per the content's hashing before signing.
-        //     let signer = Signer::<sha2::Sha256>::new(&private_key);
-
-        //     // Perform the signing operation, assuming `file_hash` is already the result of hashing the content
-        //     let rng = OsRng;
-        //     let signature = signer.sign_with_rng(rng, &file_hash)
-        //         .expect("Signing failed with RSA2048");
-
-        //     SignatureResult::RSA(signature)
-        // },
         // https://docs.rs/p256/latest/p256/ecdsa/index.html
         Algorithm::ECDSAP256 => {
             todo!()
+            // let secret_key_bytes = persona.get_ecdsa_sk_bytes().expect("Secret key bytes not found");
+
+            // let signing_key = SigningKey::from_bytes(&secret_key_bytes)
+            //     .expect("Failed to create signing key from bytes");
+
+            // let mut rng = OsRng; // Initialize the RNG
+
+            // let signature = signing_key.sign_with_rng(&mut rng, &contents);
+
+            // SignatureResult::ECDSA(signature.to_vec())
         },
     };
 
@@ -297,6 +283,7 @@ pub fn verify(name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Resu
     header.verify_sender(&persona);
     header.verify_message_len(length);
     header.verify_hash(&contents);
+    todo!(); // implement .verify_sig...
     // header.verify_signature(sig_algo, &persona);
 
     Ok(())

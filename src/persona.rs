@@ -126,7 +126,7 @@ impl Persona {
     }
 
     // Getter for the ECDSA private key bytes
-    pub fn get_ecdsa_sk(&self) -> Option<&[u8]> {
+    pub fn get_ecdsa_sk_bytes(&self) -> Option<&[u8]> {
         match &self.sk {
             CryptoPrivateKey::ECDSA(bytes) => Some(bytes),
             _ => None,
