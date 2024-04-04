@@ -22,7 +22,6 @@ use rsa::pkcs1::EncodeRsaPrivateKey;
 
 
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum CryptoPublicKey {
     QuantumSafe(sig::PublicKey),
@@ -35,7 +34,7 @@ enum CryptoPublicKey {
 enum CryptoPrivateKey {
     QuantumSafe(sig::SecretKey),
     Ed25519(Vec<u8>),
-    RSA(Vec<u8>),  // Store the RSA private key as serialized PKCS#8
+    RSA(Vec<u8>),  
     ECDSA(Vec<u8>),
 }
 
@@ -195,7 +194,6 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
         },
         5 => {
             // https://docs.rs/ring/latest/ring/signature/index.html 
-
             let rng = rand::SystemRandom::new();
             let pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng)
                 .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
