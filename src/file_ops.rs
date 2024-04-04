@@ -11,7 +11,10 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use crate::persona::Algorithm;
 use ed25519_dalek::{Signature as Ed25519Signature, VerifyingKey, Verifier};
-use p256::ecdsa::{VerifyingKey as P256VerifyingKey, Signature as P256Signature};
+// use p256::ecdsa::{VerifyingKey as P256VerifyingKey, Signature as P256Signature, SigningKey as P256SigningKey};
+use p256::ecdsa::{VerifyingKey as P256VerifyingKey, Signature as P256Signature, SigningKey as P256SigningKey};
+use p256::ecdsa::signature::Signer as P256Signer; // Import Signer trait and Signature trait
+
 use std::convert::TryFrom;
 use ring::signature::Ed25519KeyPair;
 use rsa::RsaPrivateKey;
@@ -19,6 +22,10 @@ use rsa::pkcs1v15::SigningKey;
 use rsa::sha2::Sha256;
 use rsa::signature::{RandomizedSigner, SignatureEncoding};
 
+// Claude imports
+use rsa::{RsaPublicKey, pkcs1v15::{VerifyingKey as rsaVerifyingKey, Signature}};
+use p256:: elliptic_curve::SecretKey;
+use sha2::Digest;
 
 
 
@@ -129,6 +136,24 @@ impl Header {
             },
             Ok(Algorithm::RSA2048) => {
                 todo!()
+                // if let Some(pk_bytes) = persona.get_rsa_pk_bytes() {
+                //     // Construct the RSA public key from the bytes
+                //     let public_key = RsaPublicKey::from_public_key_der(&pk_bytes)
+                //         .map_err(|e| format!("Failed to create RSA public key: {}", e))?;
+        
+                //     // Create a VerifyingKey object from the public key
+                //     let verifying_key = rsaVerifyingKey::<Sha256>::new(public_key);
+        
+                //     // Create a Signature object from the signature bytes
+                //     let signature = Signature::from_bytes(&self.signature)
+                //         .map_err(|e| format!("Failed to create RSA signature: {}", e))?;
+        
+                //     // Verify the signature using the verifying key
+                //     verifying_key.verify(&self.file_hash, &signature)
+                //         .map_err(|_| "Verification failed: invalid RSA signature".to_string())
+                // } else {
+                //     Err("RSA public key not found".into())
+                // }
             },
             Ok(Algorithm::ECDSAP256) => {
                 if let Some(pk_bytes) = persona.get_ecdsa_pk_bytes() {
@@ -225,17 +250,16 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
         },
         // https://docs.rs/p256/latest/p256/ecdsa/index.html
         Algorithm::ECDSAP256 => {
-            todo!()
-            // let secret_key_bytes = persona.get_ecdsa_sk_bytes().expect("Secret key bytes not found");
+            let secret_key_bytes = persona.get_ecdsa_sk_bytes().expect("Secret key bytes not found");
 
-            // let signing_key = SigningKey::from_bytes(&secret_key_bytes)
-            //     .expect("Failed to create signing key from bytes");
+            // Create a SigningKey object from the secret key bytes
+            let signing_key = P256SigningKey::from_slice(&secret_key_bytes)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Failed to create ECDSA P-256 signing key: {}", e)))?;
 
-            // let mut rng = OsRng; // Initialize the RNG
+            // Sign the file hash using the signing key
+            let signature: P256Signature = signing_key.sign(&file_hash);
 
-            // let signature = signing_key.sign_with_rng(&mut rng, &contents);
-
-            // SignatureResult::ECDSA(signature.to_vec())
+            SignatureResult::ECDSA(signature.to_vec())
         },
     };
 
