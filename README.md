@@ -64,10 +64,8 @@ cargo run -- list-files
 * cargo run list-signatures  
 
 
-## Testing Commands
-    1. cargo test --test file_ops_test -- --show-output
-    2. cargo test --test wallet_test -- --show-output
-
+## Testing Core Functionality 
+    1. cargo test --test official_test -- --show-output  
 
 ## Persistence
 - Persona data is stored in wallet directory in json format. 
