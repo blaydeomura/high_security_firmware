@@ -14,15 +14,18 @@ fn main() {
 
     match args.command {
         Commands::Generate { name, cs_id } => {
-            let new_persona = Persona::new(name, cs_id);
-            let result = wallet.save_persona(new_persona);
-            match result {
-                Ok(_) => {
-                    println!("Persona created successfully");
-                }
+            match Persona::new(name, cs_id) {
+                Ok(new_persona) => {
+                    // Now we have the Persona object, proceed with saving it
+                    match wallet.save_persona(&new_persona) {
+                        Ok(_) => println!("Persona created successfully"),
+                        Err(e) => println!("Error creating persona: {}", e),
+                    }
+                },
                 Err(e) => {
-                    println!("Error creating persona {}", e);
-                }
+                    // Handle the case where Persona::new returns an error
+                    println!("Error creating persona: {}", e);
+                },
             }
         },
         Commands::Remove { name } => {
