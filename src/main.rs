@@ -3,14 +3,29 @@ use rust_cli::wallet::Wallet;
 use rust_cli::commands::{self, Args, Commands};
 use rust_cli::persona::Persona;
 use rust_cli::file_ops::{self, remove_signature, verify, list_signature_files, list_files};
+use std::env;
 
 fn main() {
     let args = Args::parse();
     let mut wallet = Wallet::new();
 
-    wallet.load_wallet("wallet").unwrap_or_else(|_| {
+    // Print the current directory
+    let current_dir = env::current_dir().unwrap();
+    println!("Current directory: {:?}", current_dir);
+
+    let wallet_dir = current_dir.join("wallet");
+    println!("Looking for wallet in: {:?}", wallet_dir);
+
+    wallet.load_wallet(String::from("wallet")).unwrap_or_else(|_| {
         panic!("Error loading wallet");
     });
+
+    // let args = Args::parse();
+    // let mut wallet = Wallet::new();
+
+    // wallet.load_wallet("wallet").unwrap_or_else(|_| {
+    //     panic!("Error loading wallet");
+    // });
 
     match args.command {
         Commands::Generate { name, cs_id } => {

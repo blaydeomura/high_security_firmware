@@ -19,23 +19,43 @@ pub struct Wallet {
 }
 
 impl Wallet {
+    // pub fn new() -> Self {
+    //     Wallet {
+    //         keys: HashMap::new(),
+    //     }
+    // }
+
+    // // Opens all persona files in a wallet folder and loads them into a hashmap
+    // pub fn load_wallet(&mut self, dir_path: &str) -> std::io::Result<()> {
+    //     let entries = fs::read_dir(dir_path)?;
+    //     for entry in entries {
+    //         let dir = entry?;
+    //         let content = fs::read_to_string(dir.path())?;
+    //         let persona: Persona = serde_json::from_str(&content)?;
+    //         self.keys.insert(persona.get_name().to_lowercase(), persona);
+    //     }
+    //     Ok(())
+    // }
+
     pub fn new() -> Self {
-        Wallet {
-            keys: HashMap::new(),
-        }
+        let mut keys = HashMap::new();
+        // Initialize personas and add them to the wallet
+        let persona1 = Persona::new("test_persona".to_string(), 1).unwrap();
+        keys.insert(persona1.get_name(), persona1);
+        Wallet { keys }
     }
 
-    // Opens all persona files in a wallet folder and loads them into a hashmap
-    pub fn load_wallet(&mut self, dir_path: &str) -> std::io::Result<()> {
-        let entries = fs::read_dir(dir_path)?;
-        for entry in entries {
+    // Opens all persona files in wallet folder and loads them into hashmap
+    pub fn load_wallet(&mut self, dir_path: String) -> std::io::Result<()> {
+        for entry in fs::read_dir(dir_path)? {
             let dir = entry?;
             let content = fs::read_to_string(dir.path())?;
             let persona: Persona = serde_json::from_str(&content)?;
-            self.keys.insert(persona.get_name().to_lowercase(), persona);
+            self.keys.insert(persona.get_name(), persona);
         }
         Ok(())
     }
+
 
     pub fn save_persona(&mut self, persona: &Persona) -> std::io::Result<()> {
         let lower_name = persona.get_name().to_lowercase();
