@@ -2,8 +2,9 @@ use rust_cli::persona::Persona;
 use rust_cli::wallet::Wallet;
 use std::fs;
 use rust_cli::file_ops::{sign, verify};
-use std::path::Path;
 use std::time::Instant;
+use tempfile::tempdir;
+
 
 #[test]
 fn test_generate_persona() {
@@ -25,34 +26,32 @@ fn test_generate_persona() {
 
 #[test]
 fn test_sign_and_verify_file() {
-    // Create a new Wallet instance
     let mut wallet = Wallet::new();
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("file_test.txt");
+    fs::write(&file_path, "Test file content").unwrap();
 
-    // Create a test persona for signing
-    let test_persona = Persona::new("test_persona".to_string(), 1);
+    // Test signing and verifying for each cipher suite
+    for cs_id in 1..=4 {
+        let name = format!("TestPersona{}", cs_id);
+        let start_time = Instant::now();
 
-    // Add the test persona to the wallet
-    wallet.save_persona(test_persona.clone()).expect("Failed to save persona to wallet");
+        // Ensure persona exists
+        wallet.save_persona(Persona::new(name.clone(), cs_id)).unwrap();
 
-    // Path to the file to sign
-    let file_path = "files/file_test_2.txt";
+        // Sign file
+        let output_path = dir.path().join(format!("signed_file_cs_id{}.txt", cs_id));
+        sign(&name, file_path.to_str().unwrap(), output_path.to_str().unwrap(), &wallet).unwrap();
 
-    // Create a test file
-    let file_content = b"Test content";
-    fs::write(file_path, file_content).expect("Failed to create test file");
+        // Verify signature
+        verify(&name, output_path.to_str().unwrap(), file_path.to_str().unwrap(), &wallet).unwrap();
 
-    // Sign the file using the persona from the wallet
-    sign(&test_persona.get_name(), file_path, &wallet).expect("Failed to generate signature");
+        let end_time = Instant::now();
+        println!("Time taken to sign and verify file with cs_id {}: {:?}", cs_id, end_time - start_time);
 
-    // Path to the signature file
-    let signature_file_path = format!("signatures/{}_{}.sig", test_persona.get_name(), Path::new(file_path).file_name().unwrap().to_str().unwrap());
-
-    // Verify the signature
-    verify(&test_persona.get_name(), file_path, &signature_file_path, &wallet).expect("Failed to verify signature");
-
-    // Clean up test files
-    fs::remove_file(file_path).expect("Failed to remove test file");
-    fs::remove_file(&signature_file_path).expect("Failed to remove signature file");
+        // Clean up
+        fs::remove_file(output_path.clone()).unwrap();
+    }
 }
 
 #[test]
@@ -87,7 +86,7 @@ fn measure_cipher_suite_performance(cs_id: usize) -> (String, Vec<(u128, usize)>
 
     // Measure the performance of each operation
     let start_sign = Instant::now();
-    let _sign_result = sign(&persona_name, "files/file_test.txt", &wallet);
+    let _sign_result = sign(&persona_name, "files/file_test.txt", "output_signature_file_path", &wallet);
     let end_sign = start_sign.elapsed().as_nanos();
     let sign_time_ms = end_sign as u128 / 1_000_000;
     let sign_pk_size = test_persona.get_pk().as_ref().len();

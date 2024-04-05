@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 // A struct to store information about a file and its signature
 #[derive(Serialize, Deserialize, Debug)]
-struct Header {
+pub struct Header {
     file_type: usize,
     cs_id: usize,
     length: usize,
@@ -45,13 +45,13 @@ impl Header {
 }
 
 // Helper function to check if two vectors are equal
-fn do_vecs_match<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
+pub fn do_vecs_match<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
     let matching = a.iter().zip(b.iter()).filter(|&(a, b)| a == b).count();
     matching == a.len() && matching == b.len()
 }
 
 // Constructs a header with the given information
-fn construct_header(persona: &Persona, file_hash: Vec<u8>, signature: Signature, length: usize, contents: Vec<u8>) -> Header {
+pub fn construct_header(persona: &Persona, file_hash: Vec<u8>, signature: Signature, length: usize, contents: Vec<u8>) -> Header {
     Header {
         file_type: 1,
         cs_id: persona.get_cs_id(),
