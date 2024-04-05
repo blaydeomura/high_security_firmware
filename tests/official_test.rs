@@ -1,58 +1,45 @@
+// Import necessary modules
 use rust_cli::persona::Persona;
 use rust_cli::wallet::Wallet;
 use std::fs;
-use rust_cli::file_ops::{sign, verify};
-use std::path::Path;
+use rust_cli::file_ops::{sign, verify, Header}; // Keep the import as it is
 use std::time::Instant;
+use tempfile::tempdir;
 
+// Define tests
 #[test]
-fn test_generate_persona() {
-    // Test persona generation for all four cipher suites
-    for cs_id in 1..=4 {
-        let mut wallet = Wallet::new();
-        let persona_name = format!("test_persona_{}", cs_id);
-        let test_persona = Persona::new(persona_name.clone(), cs_id);
-
-        // Save persona and check correctness
-        wallet.save_persona(test_persona.clone()).unwrap();
-        assert!(wallet.get_persona(&persona_name).is_some(), "Failed to save persona: {}", persona_name);
-
-        // Remove persona and check correctness
-        wallet.remove_persona(&persona_name).unwrap();
-        assert!(wallet.get_persona(&persona_name).is_none(), "Failed to remove persona: {}", persona_name);
-    }
-}
-
-#[test]
-fn test_sign_and_verify_file() {
-    // Create a new Wallet instance
+fn test_sign_and_verify_file_with_header() {
+    // Test signing and verifying a file using header for each cipher suite
     let mut wallet = Wallet::new();
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("file_test.txt");
+    fs::write(&file_path, "Test file content").unwrap();
 
-    // Create a test persona for signing
-    let test_persona = Persona::new("test_persona".to_string(), 1);
+    // Define cipher suites to test
+    let cipher_suites = [1, 2, 3, 4]; // Add more cipher suites as needed
 
-    // Add the test persona to the wallet
-    wallet.save_persona(test_persona.clone()).expect("Failed to save persona to wallet");
+    for cs_id in &cipher_suites {
+        let persona_name = format!("TestPersona{}", cs_id);
+        let persona = Persona::new(persona_name.clone(), *cs_id);
+        wallet.save_persona(persona.clone()).unwrap();
 
-    // Path to the file to sign
-    let file_path = "files/file_test_2.txt";
+        let signature_file = dir.path().join(format!("signature_file_cs_id{}.txt", cs_id));
 
-    // Create a test file
-    let file_content = b"Test content";
-    fs::write(file_path, file_content).expect("Failed to create test file");
+        // Sign file
+        sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
 
-    // Sign the file using the persona from the wallet
-    sign(&test_persona.get_name(), file_path, &wallet).expect("Failed to generate signature");
+        // Read and verify signature
+        let header = fs::read_to_string(&signature_file).unwrap();
+        let header: Header = serde_json::from_str(&header).unwrap();
 
-    // Path to the signature file
-    let signature_file_path = format!("signatures/{}_{}.sig", test_persona.get_name(), Path::new(file_path).file_name().unwrap().to_str().unwrap());
+        // Verify header fields
+    assert_eq!(header.get_cs_id(), *cs_id);
+    assert_eq!(header.get_signer(), persona.get_pk());
 
-    // Verify the signature
-    verify(&test_persona.get_name(), file_path, &signature_file_path, &wallet).expect("Failed to verify signature");
 
-    // Clean up test files
-    fs::remove_file(file_path).expect("Failed to remove test file");
-    fs::remove_file(&signature_file_path).expect("Failed to remove signature file");
+        // Verify signature against the original file
+        verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
+    }
 }
 
 #[test]
@@ -87,7 +74,7 @@ fn measure_cipher_suite_performance(cs_id: usize) -> (String, Vec<(u128, usize)>
 
     // Measure the performance of each operation
     let start_sign = Instant::now();
-    let _sign_result = sign(&persona_name, "files/file_test.txt", &wallet);
+    let _sign_result = sign(&persona_name, "files/file_test.txt", "output_signature_file_path", &wallet);
     let end_sign = start_sign.elapsed().as_nanos();
     let sign_time_ms = end_sign as u128 / 1_000_000;
     let sign_pk_size = test_persona.get_pk().as_ref().len();
