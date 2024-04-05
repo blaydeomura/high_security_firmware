@@ -192,6 +192,7 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
                 .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?;
             Ok((CryptoPublicKey::QuantumSafe(pk), CryptoPrivateKey::QuantumSafe(sk)))
         },
+        // ed25519
         5 => {
             // https://docs.rs/ring/latest/ring/signature/index.html 
             let rng = rand::SystemRandom::new();
@@ -207,6 +208,7 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
             let private_key_bytes = pkcs8_bytes.as_ref().to_vec();
             Ok((CryptoPublicKey::Ed25519(public_key_bytes), CryptoPrivateKey::Ed25519(private_key_bytes)))
         },
+        // rsa
         6 => {
 
             let mut rng = OsRng::default();
@@ -229,6 +231,7 @@ fn generate_keys(cs_id: usize) -> Result<(CryptoPublicKey, CryptoPrivateKey), io
         
 
         },
+        // ecdsa
         7 => {
             let mut _rng = OsRng::default();
             let signing_key = EcdsaSigningKey::random(&mut OsRng{});  // Generate a new ECDSA signing key

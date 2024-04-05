@@ -11,24 +11,14 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use crate::persona::Algorithm;
 use ed25519_dalek::{Signature as Ed25519Signature, VerifyingKey, Verifier, SigningKey as edSigningKey};
-// use p256::ecdsa::{VerifyingKey as P256VerifyingKey, Signature as P256Signature, SigningKey as P256SigningKey};
 use p256::ecdsa::{VerifyingKey as P256VerifyingKey, Signature as P256Signature, SigningKey as P256SigningKey};
 use p256::ecdsa::signature::Signer as P256Signer; // Import Signer trait and Signature trait
-
 use std::convert::TryFrom;
-use ring::signature::Ed25519KeyPair;
 use rsa::RsaPrivateKey;
 use rsa::pkcs1v15::SigningKey;
 use rsa::sha2::Sha256;
 use rsa::signature::{RandomizedSigner, SignatureEncoding};
 use std::convert::TryInto;
-
-
-// Claude imports
-use rsa::{RsaPublicKey, pkcs1v15::{VerifyingKey as rsaVerifyingKey, Signature}};
-use p256:: elliptic_curve::SecretKey;
-use sha2::Digest;
-
 
 
 // This is because each sign function returns something different
@@ -89,10 +79,6 @@ impl Header {
     }
 
     // Checks if signature is valid
-    // fn verify_signature(&self, sig_algo: Sig, persona: &Persona) {
-    //     todo!();
-    //     // assert!(sig_algo.verify(&self.file_hash, &self.signature, persona.get_pk()).is_ok(), "Verification failed: invalid signature");
-    // }
     fn verify_signature(&self, persona: &Persona) -> Result<(), String> {
         let algorithm_result = get_sig_algorithm(self.cs_id);
 
@@ -138,25 +124,44 @@ impl Header {
                 }
             },
             Ok(Algorithm::RSA2048) => {
-                // todo!()
-                if let Some(pk_bytes) = persona.get_rsa_pk_bytes() {
-                    // Construct the RSA public key from the bytes
-                    let public_key = RsaPublicKey::to_public_key_der(&pk_bytes)
-                        .map_err(|e| format!("Failed to create RSA public key: {}", e))?;
+                todo!()
+
+                //-------Version One here-------------
+                // if let Some(pk_bytes) = persona.get_rsa_pk_bytes() {
+                //     let public_key = RsaPublicKey::from_pkcs1_der(&pk_bytes)
+                //         .map_err(|e| format!("Failed to create RSA public key: {}", e))?;
+
+                // // scheme here
+                // // Find out how to get signature scheme here!
+
+                // // The verification process needs to know the hash algorithm used. For example, using SHA-256:
+                //     match public_key.verify(,&contents, &self.signature) {
+                //         Ok(_) => Ok(()),
+                //         Err(_) => Err("Verification failed: invalid RSA signature".into())
+                //     }
+                // } else {
+                //     Err("RSA public key not found".into())
+                // }
+
+                //---------Version 2 here----------
+                // if let Some(pk_bytes) = persona.get_rsa_pk_bytes() {
+                //     // Construct the RSA public key from the bytes
+                //     let public_key = RsaPublicKey::from_pkcs1_der(&pk_bytes)
+                //         .map_err(|e| format!("Failed to create RSA public key: {}", e))?;
+
+                //     // Create a VerifyingKey object from the public key
+                //     let verifying_key = rsaVerifyingKey::<Sha256>::new(public_key);
         
-                    // Create a VerifyingKey object from the public key
-                    let verifying_key = rsaVerifyingKey::<Sha256>::new(public_key);
+                //     // Create a Signature object from the signature bytes
+                //     let signature = Signature::from_bytes(&self.signature)
+                //         .map_err(|e| format!("Failed to create RSA signature: {}", e))?;
         
-                    // Create a Signature object from the signature bytes
-                    let signature = Signature::from_bytes(&self.signature)
-                        .map_err(|e| format!("Failed to create RSA signature: {}", e))?;
-        
-                    // Verify the signature using the verifying key
-                    verifying_key.verify(&self.file_hash, &signature)
-                        .map_err(|_| "Verification failed: invalid RSA signature".to_string())
-                } else {
-                    Err("RSA public key not found".into())
-                }
+                //     // Verify the signature using the verifying key
+                //     verifying_key.verify(&self.file_hash, &signature)
+                //         .map_err(|_| "Verification failed: invalid RSA signature".to_string())
+                // } else {
+                //     Err("RSA public key not found".into())
+                // }
             },
             Ok(Algorithm::ECDSAP256) => {
                 if let Some(pk_bytes) = persona.get_ecdsa_pk_bytes() {
@@ -316,47 +321,6 @@ pub fn verify(name: &str, header_path: &str, file: &str, wallet: &Wallet) -> io:
 
     Ok(())
 }
-
-
-
-// pub fn verify(name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
-//     // get the correct persona
-//     let persona = wallet.get_persona(&name.to_lowercase())
-//         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
-
-//     // get the correct corresponding algo based on persona
-//     let algorithm = get_sig_algorithm(persona.get_cs_id()).unwrap();
-//     // let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
-
-//     // deserialize header object
-//     let header = fs::read_to_string(header)?;
-//     let header: Header = serde_json::from_str(&header)?;
-
-//     // read the file
-//     let mut in_file = File::open(file)?;
-//     let mut contents = Vec::new();
-//     let length = in_file.read_to_end(&mut contents)?;
-
-//     // verify each field
-//     header.verify_sender(&persona);
-//     header.verify_message_len(length);
-//     header.verify_hash(&contents);
-//     todo!(); // implement .verify_sig...
-//     // header.verify_signature(sig_algo, &persona);
-
-//     Ok(())
-// }
-
-
-
-
-
-
-
-
-
-
-
 
 
 // removes the signature file associated with a given persona and file.
