@@ -42,6 +42,16 @@ impl Header {
     fn verify_signature(&self, sig_algo: Sig, persona: &Persona) {
         assert!(sig_algo.verify(&self.file_hash, &self.signature, persona.get_pk()).is_ok(), "Verification failed: invalid signature");
     }
+
+     // Accessor method for cs_id
+     pub fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    // Accessor method for signer
+    pub fn get_signer(&self) -> &PublicKey {
+        &self.signer
+    }
 }
 
 // Helper function to check if two vectors are equal

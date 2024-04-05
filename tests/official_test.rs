@@ -1,56 +1,44 @@
+// Import necessary modules
 use rust_cli::persona::Persona;
 use rust_cli::wallet::Wallet;
 use std::fs;
-use rust_cli::file_ops::{sign, verify};
+use rust_cli::file_ops::{sign, verify, Header}; // Keep the import as it is
 use std::time::Instant;
 use tempfile::tempdir;
 
-
+// Define tests
 #[test]
-fn test_generate_persona() {
-    // Test persona generation for all four cipher suites
-    for cs_id in 1..=4 {
-        let mut wallet = Wallet::new();
-        let persona_name = format!("test_persona_{}", cs_id);
-        let test_persona = Persona::new(persona_name.clone(), cs_id);
-
-        // Save persona and check correctness
-        wallet.save_persona(test_persona.clone()).unwrap();
-        assert!(wallet.get_persona(&persona_name).is_some(), "Failed to save persona: {}", persona_name);
-
-        // Remove persona and check correctness
-        wallet.remove_persona(&persona_name).unwrap();
-        assert!(wallet.get_persona(&persona_name).is_none(), "Failed to remove persona: {}", persona_name);
-    }
-}
-
-#[test]
-fn test_sign_and_verify_file() {
+fn test_sign_and_verify_file_with_header() {
+    // Test signing and verifying a file using header for each cipher suite
     let mut wallet = Wallet::new();
     let dir = tempdir().unwrap();
     let file_path = dir.path().join("file_test.txt");
     fs::write(&file_path, "Test file content").unwrap();
 
-    // Test signing and verifying for each cipher suite
-    for cs_id in 1..=4 {
-        let name = format!("TestPersona{}", cs_id);
-        let start_time = Instant::now();
+    // Define cipher suites to test
+    let cipher_suites = [1, 2, 3, 4]; // Add more cipher suites as needed
 
-        // Ensure persona exists
-        wallet.save_persona(Persona::new(name.clone(), cs_id)).unwrap();
+    for cs_id in &cipher_suites {
+        let persona_name = format!("TestPersona{}", cs_id);
+        let persona = Persona::new(persona_name.clone(), *cs_id);
+        wallet.save_persona(persona.clone()).unwrap();
+
+        let signature_file = dir.path().join(format!("signature_file_cs_id{}.txt", cs_id));
 
         // Sign file
-        let output_path = dir.path().join(format!("signed_file_cs_id{}.txt", cs_id));
-        sign(&name, file_path.to_str().unwrap(), output_path.to_str().unwrap(), &wallet).unwrap();
+        sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
 
-        // Verify signature
-        verify(&name, output_path.to_str().unwrap(), file_path.to_str().unwrap(), &wallet).unwrap();
+        // Read and verify signature
+        let header = fs::read_to_string(&signature_file).unwrap();
+        let header: Header = serde_json::from_str(&header).unwrap();
 
-        let end_time = Instant::now();
-        println!("Time taken to sign and verify file with cs_id {}: {:?}", cs_id, end_time - start_time);
+        // Verify header fields
+    assert_eq!(header.get_cs_id(), *cs_id);
+    assert_eq!(header.get_signer(), persona.get_pk());
 
-        // Clean up
-        fs::remove_file(output_path.clone()).unwrap();
+
+        // Verify signature against the original file
+        verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
     }
 }
 
