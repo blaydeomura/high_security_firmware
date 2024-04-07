@@ -5,8 +5,37 @@ use std::fs;
 use rust_cli::file_ops::{sign, verify, Header}; // Keep the import as it is
 use std::time::Instant;
 use tempfile::tempdir;
+use std::convert::TryInto;
 
-// Define tests
+struct CipherSuite {
+    cs_id: u32,
+    signature_algorithm: &'static str,
+    hash_function: &'static str,
+}
+
+const CIPHER_SUITES: [CipherSuite; 4] = [
+    CipherSuite {
+        cs_id: 1,
+        signature_algorithm: "Dilithium2",
+        hash_function: "sha256",
+    },
+    CipherSuite {
+        cs_id: 2,
+        signature_algorithm: "Dilithium2",
+        hash_function: "sha512",
+    },
+    CipherSuite {
+        cs_id: 3,
+        signature_algorithm: "Falcon512",
+        hash_function: "sha256",
+    },
+    CipherSuite {
+        cs_id: 4,
+        signature_algorithm: "Falcon512",
+        hash_function: "sha512",
+    },
+];
+
 #[test]
 fn test_sign_and_verify_file_with_header() {
     // Test signing and verifying a file using header for each cipher suite
@@ -15,12 +44,11 @@ fn test_sign_and_verify_file_with_header() {
     let file_path = dir.path().join("file_test.txt");
     fs::write(&file_path, "Test file content").unwrap();
 
-    // Define cipher suites to test
-    let cipher_suites = [1, 2, 3, 4]; // Add more cipher suites as needed
-
-    for cs_id in &cipher_suites {
+    // Iterate over the cipher suites to test
+    for cipher_suite in &CIPHER_SUITES {
+        let cs_id = cipher_suite.cs_id;
         let persona_name = format!("TestPersona{}", cs_id);
-        let persona = Persona::new(persona_name.clone(), *cs_id);
+        let persona = Persona::new(persona_name.clone(), cs_id.try_into().unwrap());
         wallet.save_persona(persona.clone()).unwrap();
 
         let signature_file = dir.path().join(format!("signature_file_cs_id{}.txt", cs_id));
@@ -33,9 +61,8 @@ fn test_sign_and_verify_file_with_header() {
         let header: Header = serde_json::from_str(&header).unwrap();
 
         // Verify header fields
-    assert_eq!(header.get_cs_id(), *cs_id);
-    assert_eq!(header.get_signer(), persona.get_pk());
-
+        assert_eq!(header.get_cs_id() as u32, cs_id);
+        assert_eq!(header.get_signer(), persona.get_pk());
 
         // Verify signature against the original file
         verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
@@ -96,6 +123,8 @@ fn measure_cipher_suite_performance(cs_id: usize) -> (String, Vec<(u128, usize)>
 
     (format!("Cipher Suite {}", cs_id), measurements)
 }
+
+// -----------------------------------------------------------------------------------------------------------------------
 
 #[test]
 fn test_performance() {
