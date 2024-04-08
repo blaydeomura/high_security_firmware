@@ -1,12 +1,12 @@
+use ring::error::KeyRejected;
 use std::{error::Error, fmt};
-use ring::error::KeyRejected; 
 
 //Error handling
 #[derive(Debug)]
 pub enum MyError {
     KeyRejected(KeyRejected),
     Unspecified(ring::error::Unspecified), // Add this line
-    // expand on cases later
+                                           // expand on cases later
 }
 
 impl fmt::Display for MyError {

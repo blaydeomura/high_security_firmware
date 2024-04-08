@@ -1,8 +1,8 @@
 // Import necessary modules
+use rust_cli::file_ops::{sign, verify, Header}; // Keep the import as it is
 use rust_cli::persona::Persona;
 use rust_cli::wallet::Wallet;
 use std::fs;
-use rust_cli::file_ops::{sign, verify, Header}; // Keep the import as it is
 use std::time::Instant;
 use tempfile::tempdir;
 
@@ -23,22 +23,35 @@ fn test_sign_and_verify_file_with_header() {
         let persona = Persona::new(persona_name.clone(), *cs_id);
         wallet.save_persona(persona.clone()).unwrap();
 
-        let signature_file = dir.path().join(format!("signature_file_cs_id{}.txt", cs_id));
+        let signature_file = dir
+            .path()
+            .join(format!("signature_file_cs_id{}.txt", cs_id));
 
         // Sign file
-        sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+        sign(
+            &persona_name,
+            &file_path.to_str().unwrap(),
+            &signature_file.to_str().unwrap(),
+            &wallet,
+        )
+        .unwrap();
 
         // Read and verify signature
         let header = fs::read_to_string(&signature_file).unwrap();
         let header: Header = serde_json::from_str(&header).unwrap();
 
         // Verify header fields
-    assert_eq!(header.get_cs_id(), *cs_id);
-    assert_eq!(header.get_signer(), persona.get_pk());
-
+        assert_eq!(header.get_cs_id(), *cs_id);
+        assert_eq!(header.get_signer(), persona.get_pk());
 
         // Verify signature against the original file
-        verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
+        verify(
+            &persona_name,
+            &signature_file.to_str().unwrap(),
+            &file_path.to_str().unwrap(),
+            &wallet,
+        )
+        .unwrap();
     }
 }
 
@@ -55,7 +68,11 @@ fn test_remove_persona() {
 
     // Remove persona from wallet and check correctness
     wallet.remove_persona(persona_name).unwrap();
-    assert!(wallet.get_persona(persona_name).is_none(), "Persona still exists in wallet after removal: {}", persona_name);
+    assert!(
+        wallet.get_persona(persona_name).is_none(),
+        "Persona still exists in wallet after removal: {}",
+        persona_name
+    );
 }
 
 #[test]
@@ -74,14 +91,24 @@ fn measure_cipher_suite_performance(cs_id: usize) -> (String, Vec<(u128, usize)>
 
     // Measure the performance of each operation
     let start_sign = Instant::now();
-    let _sign_result = sign(&persona_name, "files/file_test.txt", "output_signature_file_path", &wallet);
+    let _sign_result = sign(
+        &persona_name,
+        "files/file_test.txt",
+        "output_signature_file_path",
+        &wallet,
+    );
     let end_sign = start_sign.elapsed().as_nanos();
     let sign_time_ms = end_sign as u128 / 1_000_000;
     let sign_pk_size = test_persona.get_pk().as_ref().len();
     measurements.push((sign_time_ms, sign_pk_size));
 
     let start_verify = Instant::now();
-    let _verify_result = verify(&persona_name, "files/file_test.txt", "signatures/test_persona_1_file_test.txt.sig", &wallet);
+    let _verify_result = verify(
+        &persona_name,
+        "files/file_test.txt",
+        "signatures/test_persona_1_file_test.txt.sig",
+        &wallet,
+    );
     let end_verify = start_verify.elapsed().as_nanos();
     let verify_time_ms = end_verify as u128 / 1_000_000;
     let verify_pk_size = test_persona.get_pk().as_ref().len();
@@ -109,7 +136,10 @@ fn test_performance() {
 
     // Print table header
     println!("Performance Test Results:");
-    println!("{:<20} | {:<15} | {:<10} | {:<15}", "Cipher Suite", "Operation", "Time (ms)", "Public Key Size");
+    println!(
+        "{:<20} | {:<15} | {:<10} | {:<15}",
+        "Cipher Suite", "Operation", "Time (ms)", "Public Key Size"
+    );
     println!("{:-<20}-|{:-<15}-|{:-<10}-|{:-<15}", "", "", "", "");
 
     // Iterate through each cipher suite and measure performance
@@ -124,7 +154,10 @@ fn test_performance() {
                 2 => "Remove",
                 _ => unreachable!(), // Just to handle potential future additions to measurements
             };
-            println!("{:<20} | {:<15} | {:<10} | {:<15}", suite_name, operation_name, time_ms, pk_size);
+            println!(
+                "{:<20} | {:<15} | {:<10} | {:<15}",
+                suite_name, operation_name, time_ms, pk_size
+            );
         }
     }
 }

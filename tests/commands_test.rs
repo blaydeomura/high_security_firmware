@@ -9,7 +9,6 @@
 //     // Import necessary types from the main code
 //     use super::*;
 
-
 //     // // Test parsing the "generate" command
 //     // #[test]
 //     // fn test_parse_generate_command() {
@@ -36,7 +35,7 @@
 //             .arg("123456")
 //             .output()
 //             .expect("Failed to execute command");
-        
+
 //         // Check if the output contains expected information or if the wallet file is correctly updated
 //         assert!(output.status.success());
 //     }
@@ -202,7 +201,7 @@
 //     }
 
 //     // Error Handling Tests
-    
+
 //     // Test error handling for file I/O operations
 //     #[test]
 //     fn test_file_io_error_handling() {

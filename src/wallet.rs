@@ -2,16 +2,16 @@
 // Wallet contents are stored in JSON format
 // Operations include loading wallet from file, saving wallet to file, and adding and removing keys
 
-use std::fs;            
-use std::path::Path;                         
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
 use super::persona::Persona;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 
 // Wallet contains a hashmap with names of individuals and associated persona objects
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Wallet {
-   pub keys: HashMap<String, Persona>, // Maps a name to a persona object
+    pub keys: HashMap<String, Persona>, // Maps a name to a persona object
 }
 
 impl Wallet {
@@ -79,4 +79,3 @@ impl Wallet {
         self.keys.get(&name.to_lowercase())
     }
 }
-
