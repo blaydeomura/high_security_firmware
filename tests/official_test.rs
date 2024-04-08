@@ -6,6 +6,11 @@ use rust_cli::file_ops::{sign, verify, Header}; // Keep the import as it is
 use std::time::Instant;
 use tempfile::tempdir;
 use std::convert::TryInto;
+// use crate::persona::{get_hash, get_sig_algorithm}; // Import necessary items from persona module
+// use oqs::sig::{PublicKey, Signature}; // Import necessary items from oqs::sig module
+// use crate::file_ops::{do_vecs_match}; // Import necessary items from file_ops module
+// use sha2::{Digest, Sha256, Sha512};
+
 
 struct CipherSuite {
     cs_id: u32,
@@ -92,6 +97,61 @@ fn test_remove_signature_file() {
     // No additional test required.
 }
 
+// -----------------------------------------------------------------------------------------------------------------------
+// Unit tests for get_hash function
+// #[test]
+// fn test_get_hash_sha256() {
+//     let buffer: Vec<u8> = vec![1, 2, 3];
+//     let expected_hash = Sha256::digest(&buffer).to_vec();
+//     assert_eq!(get_hash(1, &buffer).unwrap(), expected_hash);
+//     assert_eq!(get_hash(3, &buffer).unwrap(), expected_hash);
+// }
+
+// #[test]
+// fn test_get_hash_sha512() {
+//     let buffer: Vec<u8> = vec![4, 5, 6];
+//     let expected_hash = Sha512::digest(&buffer).to_vec();
+//     assert_eq!(get_hash(2, &buffer).unwrap(), expected_hash);
+//     assert_eq!(get_hash(4, &buffer).unwrap(), expected_hash);
+// }
+
+// #[test]
+// fn test_get_hash_invalid_cs_id() {
+//     // Test unsupported cs_id
+//     assert!(get_hash(5, &vec![1, 2, 3]).is_err());
+// }
+
+// // Unit tests for get_sig_algorithm function
+// #[test]
+// fn test_get_sig_algorithm_dilithium2() {
+//     assert_eq!(get_sig_algorithm(1).unwrap(), sig::Algorithm::Dilithium2);
+//     assert_eq!(get_sig_algorithm(2).unwrap(), sig::Algorithm::Dilithium2);
+// }
+
+// #[test]
+// fn test_get_sig_algorithm_falcon512() {
+//     assert_eq!(get_sig_algorithm(3).unwrap(), sig::Algorithm::Falcon512);
+//     assert_eq!(get_sig_algorithm(4).unwrap(), sig::Algorithm::Falcon512);
+// }
+
+// #[test]
+// fn test_get_sig_algorithm_valid_ids() {
+//     // Test valid cipher suite IDs to ensure they are mapped correctly
+//     assert_eq!(get_sig_algorithm(1).unwrap(), sig::Algorithm::Dilithium2);
+//     assert_eq!(get_sig_algorithm(2).unwrap(), sig::Algorithm::Dilithium2);
+//     assert_eq!(get_sig_algorithm(3).unwrap(), sig::Algorithm::Falcon512);
+//     assert_eq!(get_sig_algorithm(4).unwrap(), sig::Algorithm::Falcon512);
+// }
+
+// #[test]
+// fn test_get_sig_algorithm_invalid_ids() {
+//     // Test invalid cipher suite IDs to ensure appropriate error handling
+//     assert!(get_sig_algorithm(0).is_err()); // ID out of lower range
+//     assert!(get_sig_algorithm(5).is_err()); // ID out of upper range
+// }
+
+// -----------------------------------------------------------------------------------------------------------------------
+
 fn measure_cipher_suite_performance(cs_id: usize) -> (String, Vec<(u128, usize)>) {
     let mut measurements = Vec::new();
     let mut wallet = Wallet::new();
@@ -123,8 +183,6 @@ fn measure_cipher_suite_performance(cs_id: usize) -> (String, Vec<(u128, usize)>
 
     (format!("Cipher Suite {}", cs_id), measurements)
 }
-
-// -----------------------------------------------------------------------------------------------------------------------
 
 #[test]
 fn test_performance() {
