@@ -3,35 +3,26 @@
 // cs_id: 3 | sig: Falcon512 | hash: sha256
 // cs_id: 4 | sig: Falcon512 | hash: sha512
 
-use std::io;
-use oqs::sig;
-use serde::{Serialize, Deserialize};
+use oqs::sig::{self, PublicKey, SecretKey};
+use serde::{Deserialize, Serialize, Deserializer};
 use sha2::{Digest, Sha256, Sha512};
+use std::io;
 
-#[derive(Serialize, Deserialize, Debug)]
+use crate::cipher_suite::{self, CipherSuite};
+
+#[derive(Serialize)]
 pub struct Persona {
     name: String,
     cs_id: usize,
-    pk: sig::PublicKey,
-    sk: sig::SecretKey
+    cs: Box<dyn CipherSuite>,
 }
 
 impl Persona {
     pub fn new(name: String, cs_id: usize) -> Self {
-        // Initialize sig algorithms
-        let sig_algo = get_sig_algorithm(cs_id).unwrap_or_else(|error| { panic!("{}", error) });
-        let sig_algo = sig::Sig::new(sig_algo).unwrap_or_else(|_| { panic!("Failed to create signature object")} );
+        let cs = get_ciphersuite(cs_id).unwrap();
 
-        // Generate sig keypairs
-        let (pk, sk) = sig_algo.keypair().unwrap_or_else(|_| { panic!("Failed to generate keypair") });
-        
         // Create new persona
-        Self {
-            name,
-            cs_id,
-            pk,
-            sk
-        }
+        Self { name, cs_id, cs }
     }
 
     // Getter for persona name
@@ -40,14 +31,14 @@ impl Persona {
     }
 
     // Getter for the public key
-    pub fn get_pk(&self) -> &oqs::sig::PublicKey {
-        &self.pk
-    }
+    // pub fn get_pk(&self) -> &oqs::sig::PublicKey {
+    //     &self.cs.get_pk()
+    // }
 
-    // Getter for the secret key
-    pub fn get_sk(&self) -> &oqs::sig::SecretKey {
-        &self.sk
-    }
+    // // Getter for the secret key
+    // pub fn get_sk(&self) -> &oqs::sig::SecretKey {
+    //     &self.sk
+    // }
 
     // Getter for the cs_id
     pub fn get_cs_id(&self) -> usize {
@@ -59,16 +50,15 @@ impl Persona {
     }
 }
 
-impl Clone for Persona {
-    fn clone(&self) -> Self {
-        Persona {
-            name: self.name.clone(),
-            cs_id: self.cs_id,
-            pk: self.pk.clone(),
-            sk: self.sk.clone(),
-        }
-    }
-}
+// impl Clone for Persona {
+//     fn clone(&self) -> Self {
+//         Persona {
+//             name: self.name.clone(),
+//             cs_id: self.cs_id,
+//             cs: self.cs,
+//         }
+//     }
+// }
 
 // Implements the PartialEq trait for the Persona struct
 impl PartialEq for Persona {
@@ -84,7 +74,10 @@ pub fn get_sig_algorithm(cs_id: usize) -> Result<sig::Algorithm, std::io::Error>
     match cs_id {
         1 | 2 => Ok(sig::Algorithm::Dilithium2),
         3 | 4 => Ok(sig::Algorithm::Falcon512),
-        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4"))
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Unsupported cipher suite id. Enter a value between 1-4",
+        )),
     }
 }
 
@@ -95,12 +88,45 @@ pub fn get_hash(cs_id: usize, buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Erro
             let mut hasher = Sha256::new();
             hasher.update(&buffer);
             Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
-        },
+        }
         2 | 4 => {
             let mut hasher = Sha512::new();
             hasher.update(&buffer);
             Ok(hasher.finalize().to_vec()) // Convert GenericArray to Vec<u8>
-        },
-        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id. Enter a value between 1-4")),
+        }
+        _ => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Unsupported cipher suite id. Enter a value between 1-4",
+            ))
+        }
     }
 }
+
+pub fn get_ciphersuite(cs_id: usize) -> Result<Box<dyn CipherSuite>, std::io::Error> {
+    match cs_id {
+        1 => {
+            let cs = cipher_suite::Dilithium2Sha256::new();
+            Ok(Box::new(cipher_suite::Dilithium2Sha256::new()))
+        }
+        2 => {
+            let cs = cipher_suite::Dilithium2Sha512::new();
+            Ok(Box::new(cipher_suite::Dilithium2Sha512::new()))
+        }
+        3 => {
+            let cs = cipher_suite::Falcon512Sha256::new();
+            Ok(Box::new(cipher_suite::Falcon512Sha256::new()))
+        }
+        4 => {
+            let cs = cipher_suite::Falcon512Sha512::new();
+            Ok(Box::new(cipher_suite::Falcon512Sha512::new()))
+        }
+        _ => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Unsupported cipher suite id. Enter a value between 1-4",
+            ))
+        }
+    }
+}
+
