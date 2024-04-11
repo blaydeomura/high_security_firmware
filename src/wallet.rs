@@ -3,13 +3,14 @@
 // Operations include loading wallet from file, saving wallet to file, and adding and removing keys
 
 use super::persona::Persona;
-use serde::{Deserialize, Serialize};
+//use serde::{Deserialize, Serialize};
+use erased_serde::Deserializer;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
 // Wallet contains a hashmap with names of individuals and associated persona objects
-#[derive(Serialize, Deserialize, Debug)]
+
 pub struct Wallet {
     pub keys: HashMap<String, Persona>, // Maps a name to a persona object
 }
@@ -29,11 +30,16 @@ impl Wallet {
         for entry in fs::read_dir(dir_path)? {
             let dir = entry?;
             let content = fs::read_to_string(dir.path())?;
-            let persona: Persona = serde_json::from_str(&content)?;
+            let content = content.as_bytes();
+            let deserializer = &mut serde_json::Deserializer::from_slice(&content);
+            let mut deserializer = Box::new(<dyn Deserializer>::erase(deserializer));
+            //let persona: Persona = serde_json::from_str(&content)?;
+            let persona: Persona = erased_serde::deserialize(&mut deserializer).unwrap();
             self.keys.insert(persona.get_name(), persona);
         }
         Ok(())
     }
+
     // // Creates a new persona object, stores data in hashmap, serializes data to JSON
     // pub fn save_persona(&mut self, persona: Persona) -> std::io::Result<()> {
     //     let path_str = format!("wallet/{}.json", persona.get_name());

@@ -1,12 +1,12 @@
-use oqs::sig::{PublicKey, Sig, Signature};
-use serde::{Serialize, Deserialize};
-use std::fs::{File, OpenOptions};
-use std::io::{self, Read, Write};
-use crate::wallet::Wallet;
 use crate::persona::{get_hash, get_sig_algorithm, Persona};
+use crate::wallet::Wallet;
+use oqs::sig::{PublicKey, Sig, Signature};
+use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::fs::{File, OpenOptions};
 use std::io::ErrorKind;
+use std::io::{self, Read, Write};
+use std::path::Path;
 use std::path::PathBuf;
 
 // A struct to store information about a file and its signature
@@ -18,33 +18,48 @@ pub struct Header {
     file_hash: Vec<u8>,
     signer: PublicKey,
     signature: Signature,
-    contents: Vec<u8>
+    contents: Vec<u8>,
 }
 
 impl Header {
     // Checks if public keys match
     fn verify_sender(&self, persona: &Persona) {
-        assert_eq!(self.signer, persona.get_pk().clone(), "Verification failed: invalid public key");
+        assert_eq!(
+            self.signer,
+            persona.get_pk().clone(),
+            "Verification failed: invalid public key"
+        );
     }
 
     // Checks if length field matches actaul length of message
     fn verify_message_len(&self, length: usize) {
-        assert_eq!(self.length, length, "Verification failed: invalid message length");
+        assert_eq!(
+            self.length, length,
+            "Verification failed: invalid message length"
+        );
     }
 
     // Checks if hash of file contents matches expected hash
     fn verify_hash(&self, contents: &Vec<u8>) {
         let generated_hash = get_hash(self.cs_id, contents).unwrap();
-        assert!(do_vecs_match(&generated_hash, &self.file_hash), "Verification failed: invalid file contents");
+        assert!(
+            do_vecs_match(&generated_hash, &self.file_hash),
+            "Verification failed: invalid file contents"
+        );
     }
 
     // Checks if signature is valid
     fn verify_signature(&self, sig_algo: Sig, persona: &Persona) {
-        assert!(sig_algo.verify(&self.file_hash, &self.signature, persona.get_pk()).is_ok(), "Verification failed: invalid signature");
+        assert!(
+            sig_algo
+                .verify(&self.file_hash, &self.signature, persona.get_pk())
+                .is_ok(),
+            "Verification failed: invalid signature"
+        );
     }
 
-     // Accessor method for cs_id
-     pub fn get_cs_id(&self) -> usize {
+    // Accessor method for cs_id
+    pub fn get_cs_id(&self) -> usize {
         self.cs_id
     }
 
@@ -61,7 +76,13 @@ pub fn do_vecs_match<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
 }
 
 // Constructs a header with the given information
-pub fn construct_header(persona: &Persona, file_hash: Vec<u8>, signature: Signature, length: usize, contents: Vec<u8>) -> Header {
+pub fn construct_header(
+    persona: &Persona,
+    file_hash: Vec<u8>,
+    signature: Signature,
+    length: usize,
+    contents: Vec<u8>,
+) -> Header {
     Header {
         file_type: 1,
         cs_id: persona.get_cs_id(),
@@ -69,14 +90,15 @@ pub fn construct_header(persona: &Persona, file_hash: Vec<u8>, signature: Signat
         file_hash,
         signer: persona.get_pk().clone(),
         signature,
-        contents
+        contents,
     }
 }
 
 // Signs a file and construct a header file
 pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()> {
-    // get the correct persona 
-    let persona = wallet.get_persona(&name.to_lowercase())
+    // get the correct persona
+    let persona = wallet
+        .get_persona(&name.to_lowercase())
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
 
     // get the algo with the corresponding persona
@@ -92,7 +114,8 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
     let file_hash: Vec<u8> = get_hash(persona.get_cs_id(), &contents)?;
 
     // signing
-    let signature = sig_algo.sign(&file_hash, persona.get_sk())
+    let signature = sig_algo
+        .sign(&file_hash, persona.get_sk())
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 
     // generate header
@@ -109,7 +132,8 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
 // Verifies fields of a header file
 pub fn verify(name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
     // get the correct persona
-    let persona = wallet.get_persona(&name.to_lowercase())
+    let persona = wallet
+        .get_persona(&name.to_lowercase())
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
 
     // get the correct corresponding algo based on persona
@@ -136,22 +160,33 @@ pub fn verify(name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Resu
 
 // removes the signature file associated with a given persona and file.
 pub fn remove_signature(signature_file_name: &str) -> io::Result<()> {
-
     let signature_dir = "signatures/";
     let signature_file_path = Path::new(signature_dir).join(&signature_file_name);
-    
-    println!("Attempting to remove file at path: {:?}", signature_file_path);
+
+    println!(
+        "Attempting to remove file at path: {:?}",
+        signature_file_path
+    );
 
     // Check if the file exists before attempting to remove it
     if signature_file_path.exists() {
         let path_to_remove = signature_file_path.clone();
 
         fs::remove_file(path_to_remove).map_err(|e| {
-            eprintln!("Failed to remove signature file: {:?}. Error: {}", signature_file_path, e);
-            io::Error::new(ErrorKind::Other, format!("Failed to remove signature file: {}", e))
+            eprintln!(
+                "Failed to remove signature file: {:?}. Error: {}",
+                signature_file_path, e
+            );
+            io::Error::new(
+                ErrorKind::Other,
+                format!("Failed to remove signature file: {}", e),
+            )
         })
     } else {
-        Err(io::Error::new(ErrorKind::NotFound, "Signature file does not exist"))
+        Err(io::Error::new(
+            ErrorKind::NotFound,
+            "Signature file does not exist",
+        ))
     }
 }
 
@@ -176,7 +211,7 @@ pub fn list_signature_files() -> std::io::Result<()> {
 // lists all the files in the "files" directory.
 pub fn list_files() -> std::io::Result<()> {
     let directory_path = Path::new("files");
-    
+
     println!("Listing files in directory: {:?}", directory_path.display());
     let entries = fs::read_dir(directory_path)?
         .map(|res| res.map(|e| e.path()))
@@ -195,6 +230,6 @@ pub fn list_files() -> std::io::Result<()> {
             }
         }
     }
-    
+
     Ok(())
 }
