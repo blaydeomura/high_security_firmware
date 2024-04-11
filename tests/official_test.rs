@@ -98,7 +98,7 @@ fn test_remove_signature_file() {
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
-// Unit tests for get_hash function
+// Unit tests for get_hash function (currently in the works)
 // #[test]
 // fn test_get_hash_sha256() {
 //     let buffer: Vec<u8> = vec![1, 2, 3];
