@@ -129,4 +129,3 @@ pub fn get_ciphersuite(cs_id: usize) -> Result<Box<dyn CipherSuite>, std::io::Er
         }
     }
 }
-

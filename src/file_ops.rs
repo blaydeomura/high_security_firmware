@@ -52,7 +52,11 @@ impl Header {
     fn verify_signature(&self, sig_algo: Sig, persona: &Persona) {
         assert!(
             sig_algo
-                .verify(&self.file_hash, &self.signature, &Option::expect(persona.get_quantum_pk(), "No public key found"))
+                .verify(
+                    &self.file_hash,
+                    &self.signature,
+                    &Option::expect(persona.get_quantum_pk(), "No public key found")
+                )
                 .is_ok(),
             "Verification failed: invalid signature"
         );
@@ -115,7 +119,10 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
 
     // signing
     let signature = sig_algo
-        .sign(&file_hash, &Option::expect(persona.get_quantum_sk(), "No quantum sercret key found"))
+        .sign(
+            &file_hash,
+            &Option::expect(persona.get_quantum_sk(), "No quantum sercret key found"),
+        )
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 
     // generate header

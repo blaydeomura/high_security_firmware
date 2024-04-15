@@ -1,9 +1,9 @@
 use crate::wallet::Wallet;
+use erased_serde::serialize_trait_object;
 use oqs::sig::{self, PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
 use std::io;
-use erased_serde::serialize_trait_object;
 
 pub trait CipherSuite: erased_serde::Serialize {
     fn hash(&self, buffer: Vec<u8>) -> Vec<u8>;
@@ -71,11 +71,11 @@ impl CipherSuite for Dilithium2Sha256 {
     fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
         todo!()
     }
-    
+
     fn get_quantum_pk(&self) -> Option<PublicKey> {
         Some(self.get_pk())
     }
-    
+
     fn get_quantum_sk(&self) -> Option<SecretKey> {
         Some(self.get_sk())
     }
@@ -117,11 +117,11 @@ impl CipherSuite for Dilithium2Sha512 {
     fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
         todo!()
     }
-    
+
     fn get_quantum_pk(&self) -> Option<PublicKey> {
         Some(self.get_pk())
     }
-    
+
     fn get_quantum_sk(&self) -> Option<SecretKey> {
         Some(self.get_sk())
     }
@@ -163,11 +163,11 @@ impl CipherSuite for Falcon512Sha256 {
     fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
         todo!()
     }
-    
+
     fn get_quantum_pk(&self) -> Option<PublicKey> {
         Some(self.get_pk())
     }
-    
+
     fn get_quantum_sk(&self) -> Option<SecretKey> {
         Some(self.get_sk())
     }
@@ -209,11 +209,11 @@ impl CipherSuite for Falcon512Sha512 {
     fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
         todo!()
     }
-    
+
     fn get_quantum_pk(&self) -> Option<PublicKey> {
         Some(self.get_pk())
     }
-    
+
     fn get_quantum_sk(&self) -> Option<SecretKey> {
         Some(self.get_sk())
     }
