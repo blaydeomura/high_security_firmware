@@ -26,7 +26,7 @@ impl Header {
     fn verify_sender(&self, persona: &Persona) {
         assert_eq!(
             self.signer,
-            Option::expect(persona.get_quantum_pk(), "No public key found"),
+            Option::expect(persona.get_quantum_pk(), "No public key found").clone(),
             "Verification failed: invalid public key"
         );
     }
@@ -55,7 +55,7 @@ impl Header {
                 .verify(
                     &self.file_hash,
                     &self.signature,
-                    &Option::expect(persona.get_quantum_pk(), "No public key found")
+                    &Option::expect(persona.get_quantum_pk(), "No public key found").clone()
                 )
                 .is_ok(),
             "Verification failed: invalid signature"
@@ -92,7 +92,7 @@ pub fn construct_header(
         cs_id: persona.get_cs_id(),
         length,
         file_hash,
-        signer: Option::expect(persona.get_quantum_pk(), "No quantum key found"),
+        signer: Option::expect(persona.get_quantum_pk().cloned(), "No quantum key found"),
         signature,
         contents,
     }
@@ -121,7 +121,7 @@ pub fn sign(name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Resul
     let signature = sig_algo
         .sign(
             &file_hash,
-            &Option::expect(persona.get_quantum_sk(), "No quantum sercret key found"),
+            &Option::expect(persona.get_quantum_sk().cloned(), "No quantum sercret key found"),
         )
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 

@@ -34,8 +34,8 @@ impl Wallet {
             let deserializer = &mut serde_json::Deserializer::from_slice(&content);
             let mut deserializer = Box::new(<dyn Deserializer>::erase(deserializer));
             //let persona: Persona = serde_json::from_str(&content)?;
-            let persona: Persona = erased_serde::deserialize(&mut deserializer).unwrap();
-            self.keys.insert(persona.get_name(), persona);
+           // let persona: Persona = erased_serde::deserialize(&mut deserializer).unwrap();
+           // self.keys.insert(persona.get_name(), persona);
         }
         Ok(())
     }

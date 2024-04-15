@@ -31,12 +31,12 @@ impl Persona {
     }
 
     // Getter for the public key
-    pub fn get_quantum_pk(&self) -> Option<PublicKey> {
+    pub fn get_quantum_pk(&self) -> Option<&PublicKey> {
         self.cs.get_quantum_pk()
     }
 
     // Getter for the secret key
-    pub fn get_quantum_sk(&self) -> Option<SecretKey> {
+    pub fn get_quantum_sk(&self) -> Option<&SecretKey> {
         self.cs.get_quantum_sk()
     }
 
