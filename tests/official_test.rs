@@ -5,8 +5,42 @@ use std::fs;
 use rust_cli::file_ops::{sign, verify, Header}; // Keep the import as it is
 use std::time::Instant;
 use tempfile::tempdir;
+use std::convert::TryInto;
+// use crate::persona::{get_hash, get_sig_algorithm}; // Import necessary items from persona module
+// use oqs::sig::{PublicKey, Signature}; // Import necessary items from oqs::sig module
+// use crate::file_ops::{do_vecs_match}; // Import necessary items from file_ops module
+// use sha2::{Digest, Sha256, Sha512};
 
-// Define tests
+
+struct CipherSuite {
+    cs_id: u32,
+    signature_algorithm: &'static str,
+    hash_function: &'static str,
+}
+
+const CIPHER_SUITES: [CipherSuite; 4] = [
+    CipherSuite {
+        cs_id: 1,
+        signature_algorithm: "Dilithium2",
+        hash_function: "sha256",
+    },
+    CipherSuite {
+        cs_id: 2,
+        signature_algorithm: "Dilithium2",
+        hash_function: "sha512",
+    },
+    CipherSuite {
+        cs_id: 3,
+        signature_algorithm: "Falcon512",
+        hash_function: "sha256",
+    },
+    CipherSuite {
+        cs_id: 4,
+        signature_algorithm: "Falcon512",
+        hash_function: "sha512",
+    },
+];
+
 #[test]
 fn test_sign_and_verify_file_with_header() {
     // Test signing and verifying a file using header for each cipher suite
@@ -15,12 +49,11 @@ fn test_sign_and_verify_file_with_header() {
     let file_path = dir.path().join("file_test.txt");
     fs::write(&file_path, "Test file content").unwrap();
 
-    // Define cipher suites to test
-    let cipher_suites = [1, 2, 3, 4]; // Add more cipher suites as needed
-
-    for cs_id in &cipher_suites {
+    // Iterate over the cipher suites to test
+    for cipher_suite in &CIPHER_SUITES {
+        let cs_id = cipher_suite.cs_id;
         let persona_name = format!("TestPersona{}", cs_id);
-        let persona = Persona::new(persona_name.clone(), *cs_id);
+        let persona = Persona::new(persona_name.clone(), cs_id.try_into().unwrap());
         wallet.save_persona(persona.clone()).unwrap();
 
         let signature_file = dir.path().join(format!("signature_file_cs_id{}.txt", cs_id));
@@ -33,9 +66,8 @@ fn test_sign_and_verify_file_with_header() {
         let header: Header = serde_json::from_str(&header).unwrap();
 
         // Verify header fields
-    assert_eq!(header.get_cs_id(), *cs_id);
-    assert_eq!(header.get_signer(), persona.get_pk());
-
+        assert_eq!(header.get_cs_id() as u32, cs_id);
+        assert_eq!(header.get_signer(), persona.get_pk());
 
         // Verify signature against the original file
         verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
@@ -64,6 +96,173 @@ fn test_remove_signature_file() {
     // as it involves removing the signature file after signing.
     // No additional test required.
 }
+// -----------------------------------------------------------------------------------------------------------------------
+// Edge case tests
+#[test]
+fn test_sign_and_verify_empty_file() {
+    let mut wallet = Wallet::new();
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("empty_file.txt");
+    fs::write(&file_path, "").unwrap();
+
+    let persona_name = "TestPersonaEmpty";
+    let cs_id = 1;
+    let persona = Persona::new(persona_name.to_string(), cs_id);
+    wallet.save_persona(persona.clone()).unwrap();
+
+    let signature_file = dir.path().join("signature_file_empty.txt");
+
+    // Sign empty file
+    sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+
+    // Verify signature against the empty file
+    verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
+}
+
+#[test]
+fn test_sign_and_verify_large_file() {
+    let mut wallet = Wallet::new();
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("large_file.txt");
+    let large_content = "a".repeat(1024 * 1024 * 10); // 10MB file
+    fs::write(&file_path, large_content).unwrap();
+
+    let persona_name = "TestPersonaLarge";
+    let cs_id = 1;
+    let persona = Persona::new(persona_name.to_string(), cs_id);
+    wallet.save_persona(persona.clone()).unwrap();
+
+    let signature_file = dir.path().join("signature_file_large.txt");
+
+    // Sign large file
+    sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+
+    // Verify signature against the large file
+    verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "Persona not found in the wallet")]
+fn test_sign_with_non_existent_persona() {
+    let wallet = Wallet::new();
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("file_test.txt");
+    fs::write(&file_path, "Test file content").unwrap();
+
+    let persona_name = "NonExistentPersona";
+    let signature_file = dir.path().join("signature_file_non_existent.txt");
+
+    // Attempt to sign with a non-existent persona
+    sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "Signature verification failed")]
+fn test_verify_with_tampered_signature() {
+    let mut wallet = Wallet::new();
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("file_test.txt");
+    fs::write(&file_path, "Test file content").unwrap();
+
+    let persona_name = "TestPersonaTampered";
+    let cs_id = 1;
+    let persona = Persona::new(persona_name.to_string(), cs_id);
+    wallet.save_persona(persona.clone()).unwrap();
+
+    let signature_file = dir.path().join("signature_file_tampered.txt");
+    sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+
+    // Tamper with the signature file
+    let mut tampered_signature = fs::read_to_string(&signature_file).unwrap();
+    tampered_signature.push_str("tampered");
+    fs::write(&signature_file, tampered_signature).unwrap();
+
+    // Attempt to verify with the tampered signature file
+    verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
+}
+
+#[test]
+fn test_sign_and_verify_file_with_multiple_signatures() {
+    let mut wallet = Wallet::new();
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("file_test_multiple_signatures.txt");
+    fs::write(&file_path, "Test file content").unwrap();
+
+    let persona_names = vec!["TestPersona1", "TestPersona2", "TestPersona3"];
+    let cs_ids = vec![1, 2, 3];
+
+    let mut signature_files = Vec::new();
+
+    for (persona_name, cs_id) in persona_names.iter().zip(cs_ids.iter()) {
+        let persona = Persona::new(persona_name.to_string(), *cs_id);
+        wallet.save_persona(persona.clone()).unwrap();
+
+        let signature_file = dir.path().join(format!("signature_file_{}.txt", persona_name));
+        signature_files.push(signature_file.clone());
+
+        // Sign file with each persona
+        sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+    }
+
+    // Verify all signatures against the file
+    for (persona_name, signature_file) in persona_names.iter().zip(signature_files.iter()) {
+        verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
+    }
+}
+// -----------------------------------------------------------------------------------------------------------------------
+// Unit tests for get_hash function (currently in the works)
+// #[test]
+// fn test_get_hash_sha256() {
+//     let buffer: Vec<u8> = vec![1, 2, 3];
+//     let expected_hash = Sha256::digest(&buffer).to_vec();
+//     assert_eq!(get_hash(1, &buffer).unwrap(), expected_hash);
+//     assert_eq!(get_hash(3, &buffer).unwrap(), expected_hash);
+// }
+
+// #[test]
+// fn test_get_hash_sha512() {
+//     let buffer: Vec<u8> = vec![4, 5, 6];
+//     let expected_hash = Sha512::digest(&buffer).to_vec();
+//     assert_eq!(get_hash(2, &buffer).unwrap(), expected_hash);
+//     assert_eq!(get_hash(4, &buffer).unwrap(), expected_hash);
+// }
+
+// #[test]
+// fn test_get_hash_invalid_cs_id() {
+//     // Test unsupported cs_id
+//     assert!(get_hash(5, &vec![1, 2, 3]).is_err());
+// }
+
+// // Unit tests for get_sig_algorithm function
+// #[test]
+// fn test_get_sig_algorithm_dilithium2() {
+//     assert_eq!(get_sig_algorithm(1).unwrap(), sig::Algorithm::Dilithium2);
+//     assert_eq!(get_sig_algorithm(2).unwrap(), sig::Algorithm::Dilithium2);
+// }
+
+// #[test]
+// fn test_get_sig_algorithm_falcon512() {
+//     assert_eq!(get_sig_algorithm(3).unwrap(), sig::Algorithm::Falcon512);
+//     assert_eq!(get_sig_algorithm(4).unwrap(), sig::Algorithm::Falcon512);
+// }
+
+// #[test]
+// fn test_get_sig_algorithm_valid_ids() {
+//     // Test valid cipher suite IDs to ensure they are mapped correctly
+//     assert_eq!(get_sig_algorithm(1).unwrap(), sig::Algorithm::Dilithium2);
+//     assert_eq!(get_sig_algorithm(2).unwrap(), sig::Algorithm::Dilithium2);
+//     assert_eq!(get_sig_algorithm(3).unwrap(), sig::Algorithm::Falcon512);
+//     assert_eq!(get_sig_algorithm(4).unwrap(), sig::Algorithm::Falcon512);
+// }
+
+// #[test]
+// fn test_get_sig_algorithm_invalid_ids() {
+//     // Test invalid cipher suite IDs to ensure appropriate error handling
+//     assert!(get_sig_algorithm(0).is_err()); // ID out of lower range
+//     assert!(get_sig_algorithm(5).is_err()); // ID out of upper range
+// }
+
+// -----------------------------------------------------------------------------------------------------------------------
 
 fn measure_cipher_suite_performance(cs_id: usize) -> (String, Vec<(u128, usize)>) {
     let mut measurements = Vec::new();
