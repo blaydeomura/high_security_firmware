@@ -4,7 +4,7 @@
 // cs_id: 4 | sig: Falcon512 | hash: sha512
 
 use oqs::sig::{self, PublicKey, SecretKey};
-use serde::{Deserialize, Serialize, Deserializer};
+use serde::Serialize;
 use sha2::{Digest, Sha256, Sha512};
 use std::io;
 
@@ -31,14 +31,14 @@ impl Persona {
     }
 
     // Getter for the public key
-    // pub fn get_pk(&self) -> &oqs::sig::PublicKey {
-    //     &self.cs.get_pk()
-    // }
+    pub fn get_quantum_pk(&self) -> Option<PublicKey> {
+        self.cs.get_quantum_pk()
+    }
 
-    // // Getter for the secret key
-    // pub fn get_sk(&self) -> &oqs::sig::SecretKey {
-    //     &self.sk
-    // }
+    // Getter for the secret key
+    pub fn get_quantum_sk(&self) -> Option<SecretKey> {
+        self.cs.get_quantum_sk()
+    }
 
     // Getter for the cs_id
     pub fn get_cs_id(&self) -> usize {

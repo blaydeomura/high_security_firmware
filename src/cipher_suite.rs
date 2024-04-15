@@ -5,10 +5,12 @@ use sha2::{Digest, Sha256, Sha512};
 use std::io;
 use erased_serde::serialize_trait_object;
 
-pub trait CipherSuite: erased_serde::Serialize { // CipherSuite
+pub trait CipherSuite: erased_serde::Serialize {
     fn hash(&self, buffer: Vec<u8>) -> Vec<u8>;
     fn sign(&self, name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()>;
     fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()>;
+    fn get_quantum_pk(&self) -> Option<PublicKey>;
+    fn get_quantum_sk(&self) -> Option<SecretKey>;
 }
 serialize_trait_object!(CipherSuite);
 
@@ -48,9 +50,13 @@ impl Dilithium2Sha256 {
         Dilithium2Sha256 { pk, sk }
     }
 
-    // pub fn get_pk(&self) -> PublicKey {
-    //     self.pk
-    // }
+    pub fn get_pk(&self) -> PublicKey {
+        self.pk
+    }
+
+    pub fn get_sk(&self) -> SecretKey {
+        self.sk
+    }
 }
 
 impl CipherSuite for Dilithium2Sha256 {
@@ -64,6 +70,14 @@ impl CipherSuite for Dilithium2Sha256 {
 
     fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
         todo!()
+    }
+    
+    fn get_quantum_pk(&self) -> Option<PublicKey> {
+        Some(self.get_pk())
+    }
+    
+    fn get_quantum_sk(&self) -> Option<SecretKey> {
+        Some(self.get_sk())
     }
 }
 
@@ -81,6 +95,14 @@ impl Dilithium2Sha512 {
 
         Dilithium2Sha512 { pk, sk }
     }
+
+    pub fn get_pk(&self) -> PublicKey {
+        self.pk
+    }
+
+    pub fn get_sk(&self) -> SecretKey {
+        self.sk
+    }
 }
 
 impl CipherSuite for Dilithium2Sha512 {
@@ -94,6 +116,14 @@ impl CipherSuite for Dilithium2Sha512 {
 
     fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
         todo!()
+    }
+    
+    fn get_quantum_pk(&self) -> Option<PublicKey> {
+        Some(self.get_pk())
+    }
+    
+    fn get_quantum_sk(&self) -> Option<SecretKey> {
+        Some(self.get_sk())
     }
 }
 
@@ -111,6 +141,14 @@ impl Falcon512Sha256 {
 
         Falcon512Sha256 { pk, sk }
     }
+
+    pub fn get_pk(&self) -> PublicKey {
+        self.pk
+    }
+
+    pub fn get_sk(&self) -> SecretKey {
+        self.sk
+    }
 }
 
 impl CipherSuite for Falcon512Sha256 {
@@ -124,6 +162,14 @@ impl CipherSuite for Falcon512Sha256 {
 
     fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
         todo!()
+    }
+    
+    fn get_quantum_pk(&self) -> Option<PublicKey> {
+        Some(self.get_pk())
+    }
+    
+    fn get_quantum_sk(&self) -> Option<SecretKey> {
+        Some(self.get_sk())
     }
 }
 
@@ -141,6 +187,14 @@ impl Falcon512Sha512 {
 
         Falcon512Sha512 { pk, sk }
     }
+
+    pub fn get_pk(&self) -> PublicKey {
+        self.pk
+    }
+
+    pub fn get_sk(&self) -> SecretKey {
+        self.sk
+    }
 }
 
 impl CipherSuite for Falcon512Sha512 {
@@ -154,5 +208,13 @@ impl CipherSuite for Falcon512Sha512 {
 
     fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
         todo!()
+    }
+    
+    fn get_quantum_pk(&self) -> Option<PublicKey> {
+        Some(self.get_pk())
+    }
+    
+    fn get_quantum_sk(&self) -> Option<SecretKey> {
+        Some(self.get_sk())
     }
 }
