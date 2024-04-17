@@ -50,7 +50,7 @@ impl Header {
     // Checks if hash of file contents matches expected hash
     pub fn verify_hash(&self, hash: &Vec<u8>) {
         assert!(
-            do_vecs_match(&hash, &self.file_hash),
+            do_vecs_match(hash, &self.file_hash),
             "Verification failed: invalid file contents"
         );
     }

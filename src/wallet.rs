@@ -17,6 +17,12 @@ pub struct Wallet {
     pub keys: HashMap<String, Box<dyn CipherSuite>>, // Maps a name to a ciphersuite object
 }
 
+impl Default for Wallet {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Wallet {
     // Load wallet from file, or create a new wallet file if none found
     pub fn new() -> Self {
@@ -64,7 +70,7 @@ impl Wallet {
                 Ok(Box::new(cs))
             }
             _ => {
-                return Err(io::Error::new(
+                Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
                     "Unsupported cipher suite id. Enter a value between 1-4",
                 ))
@@ -106,7 +112,7 @@ impl Wallet {
                 self.save_ciphersuite(&name, cs)
             }
             _ => {
-                return Err(io::Error::new(
+                Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
                     "Unsupported cipher suite id. Enter a value between 1-4",
                 ))

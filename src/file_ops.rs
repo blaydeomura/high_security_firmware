@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 // removes the signature file associated with a given persona and file.
 pub fn remove_signature(signature_file_name: &str) -> io::Result<()> {
     let signature_dir = "signatures/";
-    let signature_file_path = Path::new(signature_dir).join(&signature_file_name);
+    let signature_file_path = Path::new(signature_dir).join(signature_file_name);
 
     println!(
         "Attempting to remove file at path: {:?}",

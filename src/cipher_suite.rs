@@ -98,7 +98,7 @@ impl CipherSuite for Dilithium2Sha256 {
 
         // Write header contents to signature file
         let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-        out_file.write(&header_str.as_bytes())?;
+        out_file.write(header_str.as_bytes())?;
 
         Ok(())
     }
@@ -121,10 +121,10 @@ impl CipherSuite for Dilithium2Sha256 {
         // Verify signature
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
         let signature_bytes = header.get_signature();
-        let signature = sig_algo.signature_from_bytes(&signature_bytes).unwrap();
+        let signature = sig_algo.signature_from_bytes(signature_bytes).unwrap();
         let pk_bytes = header.get_signer();
-        let pk = sig_algo.public_key_from_bytes(&pk_bytes).unwrap();
-        sig_algo.verify(&hash, &signature, &pk)
+        let pk = sig_algo.public_key_from_bytes(pk_bytes).unwrap();
+        sig_algo.verify(&hash, signature, pk)
     }
 
     fn get_name(&self) -> &String {
@@ -196,7 +196,7 @@ impl CipherSuite for Dilithium2Sha512 {
 
         // write header contents to signature file
         let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-        out_file.write(&header_str.as_bytes())?;
+        out_file.write(header_str.as_bytes())?;
 
         Ok(())
     }
@@ -219,10 +219,10 @@ impl CipherSuite for Dilithium2Sha512 {
         // Verify signature
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
         let signature_bytes = header.get_signature();
-        let signature = sig_algo.signature_from_bytes(&signature_bytes).unwrap();
+        let signature = sig_algo.signature_from_bytes(signature_bytes).unwrap();
         let pk_bytes = header.get_signer();
-        let pk = sig_algo.public_key_from_bytes(&pk_bytes).unwrap();
-        sig_algo.verify(&hash, &signature, &pk)
+        let pk = sig_algo.public_key_from_bytes(pk_bytes).unwrap();
+        sig_algo.verify(&hash, signature, pk)
     }
 
     fn get_name(&self) -> &String {
@@ -294,7 +294,7 @@ impl CipherSuite for Falcon512Sha256 {
 
         // write header contents to signature file
         let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-        out_file.write(&header_str.as_bytes())?;
+        out_file.write(header_str.as_bytes())?;
 
         Ok(())
     }
@@ -317,10 +317,10 @@ impl CipherSuite for Falcon512Sha256 {
         // Verify signature
         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
         let signature_bytes = header.get_signature();
-        let signature = sig_algo.signature_from_bytes(&signature_bytes).unwrap();
+        let signature = sig_algo.signature_from_bytes(signature_bytes).unwrap();
         let pk_bytes = header.get_signer();
-        let pk = sig_algo.public_key_from_bytes(&pk_bytes).unwrap();
-        sig_algo.verify(&hash, &signature, &pk)
+        let pk = sig_algo.public_key_from_bytes(pk_bytes).unwrap();
+        sig_algo.verify(&hash, signature, pk)
     }
 
     fn get_name(&self) -> &String {
@@ -392,7 +392,7 @@ impl CipherSuite for Falcon512Sha512 {
 
         // write header contents to signature file
         let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-        out_file.write(&header_str.as_bytes())?;
+        out_file.write(header_str.as_bytes())?;
 
         Ok(())
     }
@@ -415,10 +415,10 @@ impl CipherSuite for Falcon512Sha512 {
         // Verify signature
         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
         let signature_bytes = header.get_signature();
-        let signature = sig_algo.signature_from_bytes(&signature_bytes).unwrap();
+        let signature = sig_algo.signature_from_bytes(signature_bytes).unwrap();
         let pk_bytes = header.get_signer();
-        let pk = sig_algo.public_key_from_bytes(&pk_bytes).unwrap();
-        sig_algo.verify(&hash, &signature, &pk)
+        let pk = sig_algo.public_key_from_bytes(pk_bytes).unwrap();
+        sig_algo.verify(&hash, signature, pk)
     }
 
     fn get_name(&self) -> &String {
