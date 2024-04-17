@@ -1,22 +1,21 @@
 use clap::Parser;
 use rust_cli::commands::{self, Args, Commands};
-use rust_cli::file_ops::{self, list_files, list_signature_files, remove_signature, verify};
+//use rust_cli::file_ops::{self, list_files, list_signature_files, remove_signature, verify};
 use rust_cli::persona::Persona;
 use rust_cli::wallet::Wallet;
 
 fn main() {
     let args = Args::parse();
     let mut wallet = Wallet::new();
-    // wallet
-    //     .load_wallet(String::from("wallet"))
-    //     .unwrap_or_else(|_| {
-    //         panic!("Error loading wallet");
-    //     });
+    wallet
+        .load_wallet(String::from("wallet"))
+        .unwrap_or_else(|_| {
+            panic!("Error loading wallet");
+        });
 
     match args.command {
         Commands::Generate { name, cs_id } => {
-            let new_persona = Persona::new(name, cs_id);
-            let result = wallet.save_persona(new_persona);
+            let result = wallet.create_ciphersuite(name, cs_id);
             match result {
                 Ok(_) => {
                     println!("Persona created successfully");
@@ -27,7 +26,7 @@ fn main() {
             }
         }
         Commands::Remove { name } => {
-            let result = wallet.remove_persona(&name);
+            let result = wallet.remove_ciphersuite(&name);
             match result {
                 Ok(_) => {
                     println!("Persona removed successfully");
