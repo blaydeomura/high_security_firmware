@@ -45,9 +45,6 @@ fn main() {
             }
         }
         Commands::Verify { name, header } => {
-            // Directly pass the signature file path to the verify function
-            // let result = verify(&name, &header, &sign, &wallet);
-            
             let cipher_suite = wallet.get_ciphersuite(&name).unwrap();
             let result = cipher_suite.verify(&header);
             match result {
