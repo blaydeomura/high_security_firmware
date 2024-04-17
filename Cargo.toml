@@ -28,7 +28,7 @@ json = "0.12.4"
 # criterion = "0.3"
 
 # non quantum
-rsa = {version = "0.9.6", features=["serde"]}
+rsa = {version = "0.9.6", features=["serde", "sha2"]}
 pkcs1 = "0.7.5"
 
 [dependencies.oqs]

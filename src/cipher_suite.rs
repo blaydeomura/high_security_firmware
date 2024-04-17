@@ -16,6 +16,8 @@ use rsa::pkcs1v15::{SigningKey, VerifyingKey};
 use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
 use serde::{Serializer, Deserializer, de};
 use std::fmt;
+use rsa::sha2::{Digest as rsa_sha2_Digest, Sha256 as rsa_sha2_Sha256};
+
 
 pub trait CipherSuite: erased_serde::Serialize {
     fn hash(&self, buffer: &[u8]) -> Vec<u8>;
@@ -418,10 +420,60 @@ impl CipherSuite for Falcon512Sha512 {
 }
 
 
+// #[derive(Serialize, Deserialize, Debug)]
+// pub struct RsaSha256 {
+//     name: String,
+//     cs_id: usize,
+//     sk: RsaPrivateKey,
+//     pk: RsaPublicKey,
+// }
+
+// impl RsaSha256 {
+//     pub fn new(name: String, cs_id: usize) -> Self {
+//         // let sig_algo =
+//         //     sig::Sig::new(sig::Algorithm::Falcon512).expect("Failed to create sig object");
+//         // let (pk, sk) = sig_algo.keypair().expect("Failed to generate keypair");
+//         let mut rng = rand::thread_rng();
+//         let bits = 2048;
+//         let private_key = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
+//         let sk = SigningKey::<rsa_sha2_Sha256>::new(private_key);
+//         let pk = sk.verifying_key();
+
+//         RsaSha256 {
+//             name,
+//             cs_id,
+//             sk,
+//             pk,
+//         }
+//     }
+
+//     pub fn get_pk(&self) -> PublicKey {
+//         self.pk.clone()
+//     }
+// }
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RsaSha256 {
     name: String,
     cs_id: usize,
-    private_key: RsaPrivateKey,
-    public_key: RsaPublicKey,
+    sk: RsaPrivateKey,
+    // pk: RsaPublicKey,
+}
+
+impl RsaSha256 {
+    pub fn new(name: String, cs_id: usize) -> Self {
+        let mut rng = rand::thread_rng();
+        let bits = 2048;
+        let sk = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
+
+        RsaSha256 {
+            name,
+            cs_id,
+            sk,
+        }
+    }
+
+    // pub fn get_pk(&self) -> PublicKey {
+    //     self.pk.clone()
+    // }
 }
