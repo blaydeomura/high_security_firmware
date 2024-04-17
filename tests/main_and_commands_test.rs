@@ -94,7 +94,6 @@
 //         file_ops::sign_file(wallet, name, filename, encryption_key)
 //     }
 
-
 //     // Test signing a file
 //     #[test]
 //     fn test_sign_file() {
@@ -103,7 +102,6 @@
 //         let signature = sign_file(&wallet, "Alice", "example.txt", encryption_key);
 //         // Add assertions to verify signature
 //     }
-
 
 //     // Add more tests for other functionalities...
 

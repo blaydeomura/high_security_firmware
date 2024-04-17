@@ -1,7 +1,7 @@
 // Import necessary modules and types
+use rust_cli::file_ops::{sign, verify};
 use rust_cli::persona::Persona;
 use rust_cli::wallet::Wallet;
-use rust_cli::file_ops::{sign, verify};
 use std::fs;
 use std::path::Path;
 
@@ -15,7 +15,9 @@ fn test_file_operations() {
     let test_persona = Persona::new("test_persona".to_string(), 1);
 
     // Add the test persona to the wallet
-    wallet.save_persona(test_persona.clone()).expect("Failed to save persona to wallet");
+    wallet
+        .save_persona(test_persona.clone())
+        .expect("Failed to save persona to wallet");
 
     // Path to the file to sign
     let file_path = "files/file_test_2.txt";
@@ -24,10 +26,20 @@ fn test_file_operations() {
     sign(&test_persona.get_name(), file_path, &wallet).expect("Failed to generate signature");
 
     // Path to the signature file
-    let signature_file_path = format!("signatures/{}_{}.sig", test_persona.get_name(), Path::new(file_path).file_name().unwrap().to_str().unwrap());
+    let signature_file_path = format!(
+        "signatures/{}_{}.sig",
+        test_persona.get_name(),
+        Path::new(file_path).file_name().unwrap().to_str().unwrap()
+    );
 
     // Verify the signature
-    verify(&test_persona.get_name(), file_path, &signature_file_path, &wallet).expect("Failed to verify signature");
+    verify(
+        &test_persona.get_name(),
+        file_path,
+        &signature_file_path,
+        &wallet,
+    )
+    .expect("Failed to verify signature");
 }
 
 // Function to measure the time taken for signing a file
@@ -41,7 +53,9 @@ fn sign_benchmark() -> (usize, u128) {
     let test_persona = Persona::new("test_persona".to_string(), 1);
 
     // Add the test persona to the wallet
-    wallet.save_persona(test_persona.clone()).expect("Failed to save persona to wallet");
+    wallet
+        .save_persona(test_persona.clone())
+        .expect("Failed to save persona to wallet");
 
     // Path to the file to sign
     let file_path = "files/file_test_2.txt";
@@ -67,7 +81,9 @@ fn verify_benchmark() -> u128 {
     let test_persona = Persona::new("test_persona".to_string(), 1);
 
     // Add the test persona to the wallet
-    wallet.save_persona(test_persona.clone()).expect("Failed to save persona to wallet");
+    wallet
+        .save_persona(test_persona.clone())
+        .expect("Failed to save persona to wallet");
 
     // Path to the file to sign
     let file_path = "files/file_test_2.txt";
@@ -83,8 +99,13 @@ fn verify_benchmark() -> u128 {
     );
 
     // Verify the signature
-    verify(&test_persona.get_name(), file_path, &signature_file_path, &wallet)
-        .expect("Failed to verify signature");
+    verify(
+        &test_persona.get_name(),
+        file_path,
+        &signature_file_path,
+        &wallet,
+    )
+    .expect("Failed to verify signature");
 
     // Calculate the elapsed time for verifying
     let end_time = start_time.elapsed().as_millis();

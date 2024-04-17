@@ -1,7 +1,7 @@
 // A module for parsing command line arguments using the clap library
 // Commands perform various cryptographic operations
 
-use clap::{Subcommand, Parser};
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -20,7 +20,7 @@ pub enum Commands {
         name: String,
 
         #[arg(short, long)]
-        cs_id: usize
+        cs_id: usize,
     },
     // Removes an existing key pair
     Remove {
@@ -35,23 +35,19 @@ pub enum Commands {
         name: String,
         // File to sign
         #[arg(short, long)]
-        sign: String,
+        file: String,
         // Signature output
-        #[arg(short='o', long)]
-        header: String
+        #[arg(short = 'o', long)]
+        output: String,
     },
     // Verifies the signature of a file with a provided public key
     Verify {
         // Name of the person
         #[arg(short, long)]
         name: String,
-        
-        // Path to file to verify
-        #[arg(short='s', long)]
-        sign: String,
 
         // Path to header file with verification info
-        #[arg(short='o', long)]
+        #[arg(short = 'o', long)]
         header: String,
     },
     RemoveSignature {
@@ -61,7 +57,7 @@ pub enum Commands {
     },
     ListSignatures,
     ListFiles,
-    Algorithms
+    Algorithms,
 }
 
 pub fn print_ids() {
@@ -78,5 +74,4 @@ pub fn print_ids() {
     println!("|-----------------------------------------------|");
     println!("| 4   |   Falcon512           |   sha512        |");
     println!("|-----------------------------------------------|");
-
 }

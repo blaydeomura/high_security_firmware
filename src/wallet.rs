@@ -2,25 +2,31 @@
 // Wallet contents are stored in JSON format
 // Operations include loading wallet from file, saving wallet to file, and adding and removing keys
 
-use std::fs;            
-use std::path::Path;                         
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
-use super::persona::Persona;
+use crate::cipher_suite::{
+    self, CipherSuite, Dilithium2Sha256, Dilithium2Sha512, Falcon512Sha256, Falcon512Sha512,
+};
 
-// Wallet contains a hashmap with names of individuals and associated persona objects
-#[derive(Serialize, Deserialize, Debug)]
+use json::JsonValue;
+use std::collections::HashMap;
+use std::path::Path;
+use std::{fs, io};
+
+// Wallet contains a hashmap with names of individuals and associated ciphersuite objects
+
 pub struct Wallet {
-   pub keys: HashMap<String, Persona>, // Maps a name to a persona object
+    pub keys: HashMap<String, Box<dyn CipherSuite>>, // Maps a name to a ciphersuite object
+}
+
+impl Default for Wallet {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Wallet {
     // Load wallet from file, or create a new wallet file if none found
     pub fn new() -> Self {
-        let mut keys = HashMap::new();
-        // Initialize personas and add them to the wallet
-        let persona1 = Persona::new("test_persona".to_string(), 1);
-        keys.insert(persona1.get_name(), persona1);
+        let keys = HashMap::new();
         Wallet { keys }
     }
 
@@ -29,42 +35,107 @@ impl Wallet {
         for entry in fs::read_dir(dir_path)? {
             let dir = entry?;
             let content = fs::read_to_string(dir.path())?;
-            let persona: Persona = serde_json::from_str(&content)?;
-            self.keys.insert(persona.get_name(), persona);
+            let json_string = json::parse(&content).unwrap();
+            let cipher_suite = Self::deserialize_ciphersuite(json_string).unwrap();
+            self.keys
+                .insert(cipher_suite.get_name().clone(), cipher_suite);
         }
         Ok(())
     }
-    // // Creates a new persona object, stores data in hashmap, serializes data to JSON
-    // pub fn save_persona(&mut self, persona: Persona) -> std::io::Result<()> {
-    //     let path_str = format!("wallet/{}.json", persona.get_name());
-    //     let path = Path::new(&path_str);
-    //     let serialized = serde_json::to_string_pretty(&persona)?;
-    //     fs::write(path, serialized)?;
-    //     self.keys.insert(persona.get_name(), persona);
-    //     Ok(())
-    // }
 
-    pub fn save_persona(&mut self, mut persona: Persona) -> std::io::Result<()> {
-        // Convert name to lower case for case-insensitive handling
-        let lower_name = persona.get_name().to_lowercase();
-        persona.set_name(lower_name.clone()); // Ensure persona's name is also updated
+    // Parses a cs_id from a json string and creates the corresponding ciphersuite
+    pub fn deserialize_ciphersuite(
+        json_string: JsonValue,
+    ) -> Result<Box<dyn CipherSuite>, std::io::Error> {
+        let cs_id = json_string["cs_id"].as_isize();
+        match cs_id {
+            Some(1) => {
+                let cs: Dilithium2Sha256 = serde_json::from_str(&json_string.dump())
+                    .expect("Error deserializing ciphersuite");
+                Ok(Box::new(cs))
+            }
+            Some(2) => {
+                let cs: Dilithium2Sha512 = serde_json::from_str(&json_string.dump())
+                    .expect("Error deserializing ciphersuite");
+                Ok(Box::new(cs))
+            }
+            Some(3) => {
+                let cs: Falcon512Sha256 = serde_json::from_str(&json_string.dump())
+                    .expect("Error deserializing ciphersuite");
+                Ok(Box::new(cs))
+            }
+            Some(4) => {
+                let cs: Falcon512Sha512 = serde_json::from_str(&json_string.dump())
+                    .expect("Error deserializing ciphersuite");
+                Ok(Box::new(cs))
+            }
+            _ => {
+                Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "Unsupported cipher suite id. Enter a value between 1-4",
+                ))
+            }
+        }
+    }
 
-        let path_str = format!("wallet/{}.json", lower_name);
+    // Creates a new ciphersuite object and serializes it
+    pub fn create_ciphersuite(&mut self, name: String, cs_id: usize) -> Result<(), io::Error> {
+        let lower_name = name.to_lowercase();
+
+        match cs_id {
+            1 => {
+                let cs = Box::new(cipher_suite::Dilithium2Sha256::new(
+                    lower_name.clone(),
+                    cs_id,
+                ));
+                self.save_ciphersuite(&name, cs)
+            }
+            2 => {
+                let cs = Box::new(cipher_suite::Dilithium2Sha512::new(
+                    lower_name.clone(),
+                    cs_id,
+                ));
+                self.save_ciphersuite(&name, cs)
+            }
+            3 => {
+                let cs = Box::new(cipher_suite::Falcon512Sha256::new(
+                    lower_name.clone(),
+                    cs_id,
+                ));
+                self.save_ciphersuite(&name, cs)
+            }
+            4 => {
+                let cs = Box::new(cipher_suite::Falcon512Sha512::new(
+                    lower_name.clone(),
+                    cs_id,
+                ));
+                self.save_ciphersuite(&name, cs)
+            }
+            _ => {
+                Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "Unsupported cipher suite id. Enter a value between 1-4",
+                ))
+            }
+        }
+    }
+
+    // Serializes a ciphersuite object and saves it in keys hashmap
+    pub fn save_ciphersuite(
+        &mut self,
+        name: &str,
+        cs: Box<dyn CipherSuite>,
+    ) -> std::io::Result<()> {
+        let path_str = format!("wallet/{}.json", name);
         let path = Path::new(&path_str);
-        let serialized = serde_json::to_string_pretty(&persona)?;
+        let serialized = serde_json::to_string_pretty(&cs)?;
         fs::write(path, serialized)?;
-        self.keys.insert(lower_name, persona);
+        self.keys.insert(name.to_string(), cs);
         Ok(())
     }
 
-    // // Removes data from hashmap and deletes corresponding JSON file
-    // pub fn remove_persona(&mut self, name: &String) -> std::io::Result<()> {
-    //     self.keys.remove(name);
-    //     let path_str = format!("wallet/{}.json", name);
-    //     fs::remove_file(path_str)?;
-    //     Ok(())
-    // }
-    pub fn remove_persona(&mut self, name: &str) -> std::io::Result<()> {
+    // Removes a ciphersuite from local storage and keys hashmap
+    pub fn remove_ciphersuite(&mut self, name: &str) -> std::io::Result<()> {
         // Convert name to lower case for case-insensitive handling
         let lower_name = name.to_lowercase();
 
@@ -75,8 +146,7 @@ impl Wallet {
     }
 
     // Getter for name of persona
-    pub fn get_persona(&self, name: &str) -> Option<&Persona> {
+    pub fn get_ciphersuite(&self, name: &str) -> Option<&Box<dyn CipherSuite>> {
         self.keys.get(&name.to_lowercase())
     }
 }
-

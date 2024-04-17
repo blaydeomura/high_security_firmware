@@ -3,7 +3,7 @@
 # Encrypted Wallet Manager
 
 ## Overview
-- This Rust program is a command-line tool for managing a wallet of Persona objects. A Persona object consists of a name and a key pair generated using quantum safe algorithms. Users can generate and remove Personas as well as sign and verify files using the key pairs stored.
+- This Rust program is a command-line tool for managing a wallet of ciphersuite objects. A ciphersuite object consists of a name and a key pair generated using quantum safe algorithms. Users can generate and remove ciphersuites as well as sign and verify files using the key pairs stored.
 
 ## Features
 - Generate: Generate a new key pair using the specified algorithm.
@@ -20,7 +20,7 @@ The program uses the Clap library for parsing command-line arguments. The availa
 cargo run -- algorithms
 ```
 
-* Generate persona with specified name and cipher suite
+* Generate a new ciphersuite with the specified algorithms
 ```
 cargo run -- generate --name <name> --cs-id <id>
 ```
@@ -28,12 +28,12 @@ cargo run -- generate --name <name> --cs-id <id>
 * Sign a file using the specified persona
     * Header file must be a json file
 ```
-cargo run -- sign --name <name of signer> --sign <file to sign> --header <header file>
+cargo run -- sign --name <name of signer> --file <file to sign> --output <header file>
 ```
 
 * Verify a file based on signer and header file
 ```
-cargo run -- verify --name <name of signer> --sign <signed file> --header <header file>
+cargo run -- verify --name <name of signer> --header <header file>
 ```
 
 * Remove a persona from wallet
