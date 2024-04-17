@@ -34,9 +34,9 @@ fn main() {
                 }
             }
         }
-        Commands::Sign { name, sign, header } => {
+        Commands::Sign { name, file, output } => {
             let cipher_suite = wallet.get_ciphersuite(&name).unwrap();
-            let result = cipher_suite.sign(&sign, &header);
+            let result = cipher_suite.sign(&file, &output);
             match result {
                 Ok(_) => {
                     println!("Signature created successfully.");
