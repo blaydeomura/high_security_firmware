@@ -2,15 +2,14 @@
 use rust_cli::file_ops::{sign, verify, Header}; // Keep the import as it is
 use rust_cli::persona::Persona;
 use rust_cli::wallet::Wallet;
+use std::convert::TryInto;
 use std::fs;
 use std::time::Instant;
 use tempfile::tempdir;
-use std::convert::TryInto;
 // use crate::persona::{get_hash, get_sig_algorithm}; // Import necessary items from persona module
 // use oqs::sig::{PublicKey, Signature}; // Import necessary items from oqs::sig module
 // use crate::file_ops::{do_vecs_match}; // Import necessary items from file_ops module
 // use sha2::{Digest, Sha256, Sha512};
-
 
 struct CipherSuite {
     cs_id: u32,
@@ -131,10 +130,22 @@ fn test_sign_and_verify_empty_file() {
     let signature_file = dir.path().join("signature_file_empty.txt");
 
     // Sign empty file
-    sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+    sign(
+        &persona_name,
+        &file_path.to_str().unwrap(),
+        &signature_file.to_str().unwrap(),
+        &wallet,
+    )
+    .unwrap();
 
     // Verify signature against the empty file
-    verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
+    verify(
+        &persona_name,
+        &signature_file.to_str().unwrap(),
+        &file_path.to_str().unwrap(),
+        &wallet,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -153,10 +164,22 @@ fn test_sign_and_verify_large_file() {
     let signature_file = dir.path().join("signature_file_large.txt");
 
     // Sign large file
-    sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+    sign(
+        &persona_name,
+        &file_path.to_str().unwrap(),
+        &signature_file.to_str().unwrap(),
+        &wallet,
+    )
+    .unwrap();
 
     // Verify signature against the large file
-    verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
+    verify(
+        &persona_name,
+        &signature_file.to_str().unwrap(),
+        &file_path.to_str().unwrap(),
+        &wallet,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -171,7 +194,13 @@ fn test_sign_with_non_existent_persona() {
     let signature_file = dir.path().join("signature_file_non_existent.txt");
 
     // Attempt to sign with a non-existent persona
-    sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+    sign(
+        &persona_name,
+        &file_path.to_str().unwrap(),
+        &signature_file.to_str().unwrap(),
+        &wallet,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -188,7 +217,13 @@ fn test_verify_with_tampered_signature() {
     wallet.save_persona(persona.clone()).unwrap();
 
     let signature_file = dir.path().join("signature_file_tampered.txt");
-    sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+    sign(
+        &persona_name,
+        &file_path.to_str().unwrap(),
+        &signature_file.to_str().unwrap(),
+        &wallet,
+    )
+    .unwrap();
 
     // Tamper with the signature file
     let mut tampered_signature = fs::read_to_string(&signature_file).unwrap();
@@ -196,7 +231,13 @@ fn test_verify_with_tampered_signature() {
     fs::write(&signature_file, tampered_signature).unwrap();
 
     // Attempt to verify with the tampered signature file
-    verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
+    verify(
+        &persona_name,
+        &signature_file.to_str().unwrap(),
+        &file_path.to_str().unwrap(),
+        &wallet,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -215,16 +256,30 @@ fn test_sign_and_verify_file_with_multiple_signatures() {
         let persona = Persona::new(persona_name.to_string(), *cs_id);
         wallet.save_persona(persona.clone()).unwrap();
 
-        let signature_file = dir.path().join(format!("signature_file_{}.txt", persona_name));
+        let signature_file = dir
+            .path()
+            .join(format!("signature_file_{}.txt", persona_name));
         signature_files.push(signature_file.clone());
 
         // Sign file with each persona
-        sign(&persona_name, &file_path.to_str().unwrap(), &signature_file.to_str().unwrap(), &wallet).unwrap();
+        sign(
+            &persona_name,
+            &file_path.to_str().unwrap(),
+            &signature_file.to_str().unwrap(),
+            &wallet,
+        )
+        .unwrap();
     }
 
     // Verify all signatures against the file
     for (persona_name, signature_file) in persona_names.iter().zip(signature_files.iter()) {
-        verify(&persona_name, &signature_file.to_str().unwrap(), &file_path.to_str().unwrap(), &wallet).unwrap();
+        verify(
+            &persona_name,
+            &signature_file.to_str().unwrap(),
+            &file_path.to_str().unwrap(),
+            &wallet,
+        )
+        .unwrap();
     }
 }
 // -----------------------------------------------------------------------------------------------------------------------
