@@ -20,7 +20,7 @@ pub struct Wallet {
 impl Wallet {
     // Load wallet from file, or create a new wallet file if none found
     pub fn new() -> Self {
-        let mut keys = HashMap::new();
+        let keys = HashMap::new();
         Wallet { keys }
     }
 
