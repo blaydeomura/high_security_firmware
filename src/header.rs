@@ -48,7 +48,7 @@ impl Header {
     }
 
     // Checks if hash of file contents matches expected hash
-    pub fn verify_hash(&self, hash: &Vec<u8>) {
+    pub fn verify_hash(&self, hash: &[u8]) {
         assert!(
             do_vecs_match(hash, &self.file_hash),
             "Verification failed: invalid file contents"
@@ -77,7 +77,7 @@ impl Header {
 }
 
 // Helper function to check if two vectors are equal
-pub fn do_vecs_match<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
+pub fn do_vecs_match<T: PartialEq>(a: &[T], b: &[T]) -> bool {
     let matching = a.iter().zip(b.iter()).filter(|&(a, b)| a == b).count();
     matching == a.len() && matching == b.len()
 }

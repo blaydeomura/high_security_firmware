@@ -9,7 +9,7 @@ use std::{
 };
 
 pub trait CipherSuite: erased_serde::Serialize {
-    fn hash(&self, buffer: &Vec<u8>) -> Vec<u8>;
+    fn hash(&self, buffer: &[u8]) -> Vec<u8>;
     fn sign(&self, input: &str, output: &str) -> io::Result<()>;
     fn verify(&self, header: &str) -> io::Result<()>;
     fn get_name(&self) -> &String;
@@ -18,21 +18,21 @@ pub trait CipherSuite: erased_serde::Serialize {
 serialize_trait_object!(CipherSuite);
 
 // Sha256 hash function
-fn sha256_hash(buffer: &Vec<u8>) -> Vec<u8> {
+fn sha256_hash(buffer: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(buffer);
     hasher.finalize().to_vec()
 }
 
 // Sha512 hash function
-fn sha512_hash(buffer: &Vec<u8>) -> Vec<u8> {
+fn sha512_hash(buffer: &[u8]) -> Vec<u8> {
     let mut hasher = Sha512::new();
     hasher.update(buffer);
     hasher.finalize().to_vec()
 }
 
 // Blake3 hash function
-fn blake3_hash(buffer: &Vec<u8>) -> Vec<u8> {
+fn blake3_hash(buffer: &[u8]) -> Vec<u8> {
     let mut hasher = blake3::Hasher::new();
     hasher.update(buffer);
     hasher.finalize().to_vec()
@@ -61,7 +61,7 @@ fn quantum_sign(
 
     // Write header contents to signature file
     let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-    out_file.write(header_str.as_bytes())?;
+    Write::write_all(&mut out_file, header_str.as_bytes())?;
 
     Ok(())
 }
@@ -116,7 +116,7 @@ impl Dilithium2Sha256 {
 }
 
 impl CipherSuite for Dilithium2Sha256 {
-    fn hash(&self, buffer: &Vec<u8>) -> Vec<u8> {
+    fn hash(&self, buffer: &[u8]) -> Vec<u8> {
         sha256_hash(buffer)
     }
 
@@ -196,7 +196,7 @@ impl Dilithium2Sha512 {
 }
 
 impl CipherSuite for Dilithium2Sha512 {
-    fn hash(&self, buffer: &Vec<u8>) -> Vec<u8> {
+    fn hash(&self, buffer: &[u8]) -> Vec<u8> {
         sha512_hash(buffer)
     }
 
@@ -276,7 +276,7 @@ impl Falcon512Sha256 {
 }
 
 impl CipherSuite for Falcon512Sha256 {
-    fn hash(&self, buffer: &Vec<u8>) -> Vec<u8> {
+    fn hash(&self, buffer: &[u8]) -> Vec<u8> {
         sha256_hash(buffer)
     }
 
@@ -356,7 +356,7 @@ impl Falcon512Sha512 {
 }
 
 impl CipherSuite for Falcon512Sha512 {
-    fn hash(&self, buffer: &Vec<u8>) -> Vec<u8> {
+    fn hash(&self, buffer: &[u8]) -> Vec<u8> {
         sha512_hash(buffer)
     }
 
