@@ -8,6 +8,15 @@ use std::{
     io::{self, Read, Write},
 };
 
+// non quantum imports
+// use rsa::{RsaPrivateKey, RsaPublicKey, pkcs1v15::{SigningKey, VerifyingKey}};
+use rsa::RsaPrivateKey;
+use rsa::RsaPublicKey;
+use rsa::pkcs1v15::{SigningKey, VerifyingKey};
+use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
+use serde::{Serializer, Deserializer, de};
+use std::fmt;
+
 pub trait CipherSuite: erased_serde::Serialize {
     fn hash(&self, buffer: &[u8]) -> Vec<u8>;
     fn sign(&self, input: &str, output: &str) -> io::Result<()>;
@@ -406,4 +415,13 @@ impl CipherSuite for Falcon512Sha512 {
     fn get_pk_bytes(&self) -> Vec<u8> {
         self.get_pk().into_vec()
     }
+}
+
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RsaSha256 {
+    name: String,
+    cs_id: usize,
+    private_key: RsaPrivateKey,
+    public_key: RsaPublicKey,
 }

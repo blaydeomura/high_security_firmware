@@ -27,6 +27,10 @@ erased-serde = "0.4.4"
 json = "0.12.4"
 # criterion = "0.3"
 
+# non quantum
+rsa = {version = "0.9.6", features=["serde"]}
+pkcs1 = "0.7.5"
+
 [dependencies.oqs]
 version = "*"
 default-features = false
