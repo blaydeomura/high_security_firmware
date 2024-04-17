@@ -1,4 +1,4 @@
-use crate::{file_ops::construct_header, wallet::Wallet};
+use crate::header::Header;
 use erased_serde::serialize_trait_object;
 use oqs::sig::{self, Algorithm, PublicKey, SecretKey, Sig};
 use serde::{Deserialize, Serialize};
@@ -10,10 +10,10 @@ use std::{
 
 pub trait CipherSuite: erased_serde::Serialize {
     fn hash(&self, buffer: &Vec<u8>) -> Vec<u8>;
-    fn sign(&self, name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()>;
-    fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()>;
+    fn sign(&self, input: &str, output: &str) -> io::Result<()>;
+    fn verify(&self, header: &str, file: &str) -> io::Result<()>;
     fn get_name(&self) -> &String;
-    fn get_pk_bytes(&self) -> &Vec<u8>;
+    fn get_pk_bytes(&self) -> Vec<u8>;
 }
 serialize_trait_object!(CipherSuite);
 
@@ -38,7 +38,6 @@ fn blake3_hash(buffer: &Vec<u8>) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Dilithium2Sha256 {
     name: String,
@@ -61,12 +60,8 @@ impl Dilithium2Sha256 {
         }
     }
 
-    pub fn get_pk(&self) -> &PublicKey {
-        &self.pk
-    }
-
-    pub fn get_sk(&self) -> &SecretKey {
-        &self.sk
+    pub fn get_pk(&self) -> PublicKey {
+        self.pk.clone()
     }
 }
 
@@ -75,7 +70,7 @@ impl CipherSuite for Dilithium2Sha256 {
         sha256_hash(buffer)
     }
 
-    fn sign(&self, name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()> {
+    fn sign(&self, input: &str, output: &str) -> io::Result<()> {
         // Read and hash the input file
         let mut in_file = File::open(input)?;
         let mut contents = Vec::new();
@@ -88,26 +83,27 @@ impl CipherSuite for Dilithium2Sha256 {
         let signature = sig_algo
             .sign(&file_hash, &self.sk)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
+        let signature = signature.into_vec();
 
         // Construct header
-        let header = construct_header(
+        let header = Header::new(
             self.cs_id,
             file_hash,
-            self.pk.into_vec(),
+            self.get_pk_bytes(),
             signature,
             length,
             contents,
         );
         let header_str = serde_json::to_string_pretty(&header)?;
 
-        // write header contents to signature file
+        // Write header contents to signature file
         let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
         out_file.write(&header_str.as_bytes())?;
 
         Ok(())
     }
 
-    fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
+    fn verify(&self, header: &str, file: &str) -> io::Result<()> {
         todo!()
     }
 
@@ -115,8 +111,8 @@ impl CipherSuite for Dilithium2Sha256 {
         &self.name
     }
 
-    fn get_pk_bytes(&self) -> &Vec<u8> {
-        &self.pk.into_vec()
+    fn get_pk_bytes(&self) -> Vec<u8> {
+        self.get_pk().into_vec()
     }
 }
 
@@ -142,12 +138,8 @@ impl Dilithium2Sha512 {
         }
     }
 
-    pub fn get_pk(&self) -> &PublicKey {
-        &self.pk
-    }
-
-    pub fn get_sk(&self) -> &SecretKey {
-        &self.sk
+    pub fn get_pk(&self) -> PublicKey {
+        self.pk.clone()
     }
 }
 
@@ -156,7 +148,7 @@ impl CipherSuite for Dilithium2Sha512 {
         sha512_hash(buffer)
     }
 
-    fn sign(&self, name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()> {
+    fn sign(&self, input: &str, output: &str) -> io::Result<()> {
         // Read and hash the input file
         let mut in_file = File::open(input)?;
         let mut contents = Vec::new();
@@ -169,12 +161,13 @@ impl CipherSuite for Dilithium2Sha512 {
         let signature = sig_algo
             .sign(&file_hash, &self.sk)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
+        let signature = signature.into_vec();
 
         // Construct header
-        let header = construct_header(
+        let header = Header::new(
             self.cs_id,
             file_hash,
-            self.pk.into_vec(),
+            self.get_pk_bytes(),
             signature,
             length,
             contents,
@@ -188,7 +181,7 @@ impl CipherSuite for Dilithium2Sha512 {
         Ok(())
     }
 
-    fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
+    fn verify(&self, header: &str, file: &str) -> io::Result<()> {
         todo!()
     }
 
@@ -196,8 +189,8 @@ impl CipherSuite for Dilithium2Sha512 {
         &self.name
     }
 
-    fn get_pk_bytes(&self) -> &Vec<u8> {
-        &self.pk.into_vec()
+    fn get_pk_bytes(&self) -> Vec<u8> {
+        self.get_pk().into_vec()
     }
 }
 
@@ -223,12 +216,8 @@ impl Falcon512Sha256 {
         }
     }
 
-    pub fn get_pk(&self) -> &PublicKey {
-        &self.pk
-    }
-
-    pub fn get_sk(&self) -> &SecretKey {
-        &self.sk
+    pub fn get_pk(&self) -> PublicKey {
+        self.pk.clone()
     }
 }
 
@@ -237,7 +226,7 @@ impl CipherSuite for Falcon512Sha256 {
         sha256_hash(buffer)
     }
 
-    fn sign(&self, name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()> {
+    fn sign(&self, input: &str, output: &str) -> io::Result<()> {
         // Read and hash the input file
         let mut in_file = File::open(input)?;
         let mut contents = Vec::new();
@@ -250,12 +239,13 @@ impl CipherSuite for Falcon512Sha256 {
         let signature = sig_algo
             .sign(&file_hash, &self.sk)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
+        let signature = signature.into_vec();
 
         // Construct header
-        let header = construct_header(
+        let header = Header::new(
             self.cs_id,
             file_hash,
-            self.pk.into_vec(),
+            self.get_pk_bytes(),
             signature,
             length,
             contents,
@@ -269,7 +259,7 @@ impl CipherSuite for Falcon512Sha256 {
         Ok(())
     }
 
-    fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
+    fn verify(&self, header: &str, file: &str) -> io::Result<()> {
         todo!()
     }
 
@@ -277,8 +267,8 @@ impl CipherSuite for Falcon512Sha256 {
         &self.name
     }
 
-    fn get_pk_bytes(&self) -> &Vec<u8> {
-        &self.pk.into_vec()
+    fn get_pk_bytes(&self) -> Vec<u8> {
+        self.get_pk().into_vec()
     }
 }
 
@@ -304,12 +294,8 @@ impl Falcon512Sha512 {
         }
     }
 
-    pub fn get_pk(&self) -> &PublicKey {
-        &self.pk
-    }
-
-    pub fn get_sk(&self) -> &SecretKey {
-        &self.sk
+    pub fn get_pk(&self) -> PublicKey {
+        self.pk.clone()
     }
 }
 
@@ -318,7 +304,7 @@ impl CipherSuite for Falcon512Sha512 {
         sha512_hash(buffer)
     }
 
-    fn sign(&self, name: &str, input: &str, output: &str, wallet: &Wallet) -> io::Result<()> {
+    fn sign(&self, input: &str, output: &str) -> io::Result<()> {
         // Read and hash the input file
         let mut in_file = File::open(input)?;
         let mut contents = Vec::new();
@@ -331,12 +317,13 @@ impl CipherSuite for Falcon512Sha512 {
         let signature = sig_algo
             .sign(&file_hash, &self.sk)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
+        let signature = signature.into_vec();
 
         // Construct header
-        let header = construct_header(
+        let header = Header::new(
             self.cs_id,
             file_hash,
-            self.pk.into_vec(),
+            self.get_pk_bytes(),
             signature,
             length,
             contents,
@@ -350,7 +337,7 @@ impl CipherSuite for Falcon512Sha512 {
         Ok(())
     }
 
-    fn verify(&self, name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
+    fn verify(&self, header: &str, file: &str) -> io::Result<()> {
         todo!()
     }
 
@@ -358,7 +345,7 @@ impl CipherSuite for Falcon512Sha512 {
         &self.name
     }
 
-    fn get_pk_bytes(&self) -> &Vec<u8> {
-        &self.pk.into_vec()
+    fn get_pk_bytes(&self) -> Vec<u8> {
+        self.get_pk().into_vec()
     }
 }
