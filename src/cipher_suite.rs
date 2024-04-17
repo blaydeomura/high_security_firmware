@@ -11,7 +11,7 @@ use std::{
 pub trait CipherSuite: erased_serde::Serialize {
     fn hash(&self, buffer: &Vec<u8>) -> Vec<u8>;
     fn sign(&self, input: &str, output: &str) -> io::Result<()>;
-    fn verify(&self, header: &str) -> Result<(), oqs::Error>;
+    fn verify(&self, header: &str) -> io::Result<()>;
     fn get_name(&self) -> &String;
     fn get_pk_bytes(&self) -> Vec<u8>;
 }
@@ -36,6 +36,32 @@ fn blake3_hash(buffer: &Vec<u8>) -> Vec<u8> {
     let mut hasher = blake3::Hasher::new();
     hasher.update(buffer);
     hasher.finalize().to_vec()
+}
+
+// Boilerplate function for quantum signing
+fn quantum_sign(cs_id: usize, contents: Vec<u8>, file_hash: Vec<u8>, length: usize, output: &str, sig_algo: Sig, pk_bytes: Vec<u8>, sk: &SecretKey) -> io::Result<()> {
+    // Sign file
+    let signature = sig_algo
+        .sign(&file_hash, sk)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
+    let signature = signature.into_vec();
+
+    // Construct header
+    let header = Header::new(
+        cs_id,
+        file_hash,
+        pk_bytes,
+        signature,
+        length,
+        contents,
+    );
+    let header_str = serde_json::to_string_pretty(&header)?;
+
+    // Write header contents to signature file
+    let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
+    out_file.write(header_str.as_bytes())?;
+
+    Ok(())
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -77,37 +103,18 @@ impl CipherSuite for Dilithium2Sha256 {
         let length = in_file.read_to_end(&mut contents)?;
         let file_hash: Vec<u8> = self.hash(&contents);
 
+        // Create sig object
+        let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Unable to create sig object");
+
         // Sign file
-        let algorithm = Algorithm::Dilithium2;
-        let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
-        let signature = sig_algo
-            .sign(&file_hash, &self.sk)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
-        let signature = signature.into_vec();
-
-        // Construct header
-        let header = Header::new(
-            self.cs_id,
-            file_hash,
-            self.get_pk_bytes(),
-            signature,
-            length,
-            contents,
-        );
-        let header_str = serde_json::to_string_pretty(&header)?;
-
-        // Write header contents to signature file
-        let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-        out_file.write(header_str.as_bytes())?;
-
-        Ok(())
+        quantum_sign(self.cs_id, contents, file_hash, length, output, sig_algo, self.get_pk_bytes(), &self.sk)
     }
 
-    fn verify(&self, header: &str) -> Result<(), oqs::Error> {
+    fn verify(&self, header: &str) -> io::Result<()> {
         // Read header file
-        let header = fs::read_to_string(header).expect("Unable to read header file");
+        let header = fs::read_to_string(header)?;
         let header: Header =
-            serde_json::from_str(&header).expect("Unable to deserialize header file");
+            serde_json::from_str(&header)?;
 
         // Verify sender and message length
         header.verify_sender(self.get_pk_bytes());
@@ -124,7 +131,8 @@ impl CipherSuite for Dilithium2Sha256 {
         let signature = sig_algo.signature_from_bytes(signature_bytes).unwrap();
         let pk_bytes = header.get_signer();
         let pk = sig_algo.public_key_from_bytes(pk_bytes).unwrap();
-        sig_algo.verify(&hash, signature, pk)
+        sig_algo.verify(&hash, signature, pk).expect("OQS error: Verification failed");
+        Ok(())
     }
 
     fn get_name(&self) -> &String {
@@ -175,37 +183,18 @@ impl CipherSuite for Dilithium2Sha512 {
         let length = in_file.read_to_end(&mut contents)?;
         let file_hash: Vec<u8> = self.hash(&contents);
 
+        // Create sig object
+        let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Unable to create sig object");
+
         // Sign file
-        let algorithm = Algorithm::Dilithium2;
-        let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
-        let signature = sig_algo
-            .sign(&file_hash, &self.sk)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
-        let signature = signature.into_vec();
-
-        // Construct header
-        let header = Header::new(
-            self.cs_id,
-            file_hash,
-            self.get_pk_bytes(),
-            signature,
-            length,
-            contents,
-        );
-        let header_str = serde_json::to_string_pretty(&header)?;
-
-        // write header contents to signature file
-        let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-        out_file.write(header_str.as_bytes())?;
-
-        Ok(())
+        quantum_sign(self.cs_id, contents, file_hash, length, output, sig_algo, self.get_pk_bytes(), &self.sk)
     }
 
-    fn verify(&self, header: &str) -> Result<(), oqs::Error> {
+    fn verify(&self, header: &str) -> io::Result<()> {
         // Read header file
-        let header = fs::read_to_string(header).expect("Unable to read header file");
+        let header = fs::read_to_string(header)?;
         let header: Header =
-            serde_json::from_str(&header).expect("Unable to deserialize header file");
+            serde_json::from_str(&header)?;
 
         // Verify sender and message length
         header.verify_sender(self.get_pk_bytes());
@@ -222,7 +211,8 @@ impl CipherSuite for Dilithium2Sha512 {
         let signature = sig_algo.signature_from_bytes(signature_bytes).unwrap();
         let pk_bytes = header.get_signer();
         let pk = sig_algo.public_key_from_bytes(pk_bytes).unwrap();
-        sig_algo.verify(&hash, signature, pk)
+        sig_algo.verify(&hash, signature, pk).expect("OQS error: Verification failed");
+        Ok(())
     }
 
     fn get_name(&self) -> &String {
@@ -273,37 +263,18 @@ impl CipherSuite for Falcon512Sha256 {
         let length = in_file.read_to_end(&mut contents)?;
         let file_hash: Vec<u8> = self.hash(&contents);
 
+        // Create sig object
+        let sig_algo = Sig::new(Algorithm::Falcon512).expect("Unable to create sig object");
+
         // Sign file
-        let algorithm = Algorithm::Falcon512;
-        let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
-        let signature = sig_algo
-            .sign(&file_hash, &self.sk)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
-        let signature = signature.into_vec();
-
-        // Construct header
-        let header = Header::new(
-            self.cs_id,
-            file_hash,
-            self.get_pk_bytes(),
-            signature,
-            length,
-            contents,
-        );
-        let header_str = serde_json::to_string_pretty(&header)?;
-
-        // write header contents to signature file
-        let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-        out_file.write(header_str.as_bytes())?;
-
-        Ok(())
+        quantum_sign(self.cs_id, contents, file_hash, length, output, sig_algo, self.get_pk_bytes(), &self.sk)
     }
 
-    fn verify(&self, header: &str) -> Result<(), oqs::Error> {
+    fn verify(&self, header: &str) -> io::Result<()> {
         // Read header file
-        let header = fs::read_to_string(header).expect("Unable to read header file");
+        let header = fs::read_to_string(header)?;
         let header: Header =
-            serde_json::from_str(&header).expect("Unable to deserialize header file");
+            serde_json::from_str(&header)?;
 
         // Verify sender and message length
         header.verify_sender(self.get_pk_bytes());
@@ -320,7 +291,8 @@ impl CipherSuite for Falcon512Sha256 {
         let signature = sig_algo.signature_from_bytes(signature_bytes).unwrap();
         let pk_bytes = header.get_signer();
         let pk = sig_algo.public_key_from_bytes(pk_bytes).unwrap();
-        sig_algo.verify(&hash, signature, pk)
+        sig_algo.verify(&hash, signature, pk).expect("OQS error: Verification failed");
+        Ok(())
     }
 
     fn get_name(&self) -> &String {
@@ -371,37 +343,18 @@ impl CipherSuite for Falcon512Sha512 {
         let length = in_file.read_to_end(&mut contents)?;
         let file_hash: Vec<u8> = self.hash(&contents);
 
+        // Create sig object
+        let sig_algo = Sig::new(Algorithm::Falcon512).expect("Unable to create sig object");
+
         // Sign file
-        let algorithm = Algorithm::Falcon512;
-        let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
-        let signature = sig_algo
-            .sign(&file_hash, &self.sk)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
-        let signature = signature.into_vec();
-
-        // Construct header
-        let header = Header::new(
-            self.cs_id,
-            file_hash,
-            self.get_pk_bytes(),
-            signature,
-            length,
-            contents,
-        );
-        let header_str = serde_json::to_string_pretty(&header)?;
-
-        // write header contents to signature file
-        let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-        out_file.write(header_str.as_bytes())?;
-
-        Ok(())
+        quantum_sign(self.cs_id, contents, file_hash, length, output, sig_algo, self.get_pk_bytes(), &self.sk)
     }
 
-    fn verify(&self, header: &str) -> Result<(), oqs::Error> {
+    fn verify(&self, header: &str) -> io::Result<()> {
         // Read header file
-        let header = fs::read_to_string(header).expect("Unable to read header file");
+        let header = fs::read_to_string(header)?;
         let header: Header =
-            serde_json::from_str(&header).expect("Unable to deserialize header file");
+            serde_json::from_str(&header)?;
 
         // Verify sender and message length
         header.verify_sender(self.get_pk_bytes());
@@ -418,7 +371,8 @@ impl CipherSuite for Falcon512Sha512 {
         let signature = sig_algo.signature_from_bytes(signature_bytes).unwrap();
         let pk_bytes = header.get_signer();
         let pk = sig_algo.public_key_from_bytes(pk_bytes).unwrap();
-        sig_algo.verify(&hash, signature, pk)
+        sig_algo.verify(&hash, signature, pk).expect("OQS error: Verification failed");
+        Ok(())
     }
 
     fn get_name(&self) -> &String {
