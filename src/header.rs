@@ -85,35 +85,6 @@ pub fn do_vecs_match<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
     matching == a.len() && matching == b.len()
 }
 
-// // Verifies fields of a header file
-// pub fn verify(name: &str, header: &str, file: &str, wallet: &Wallet) -> io::Result<()> {
-//     // get the correct persona
-//     let persona = wallet
-//         .get_persona(&name.to_lowercase())
-//         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Persona not found"))?;
-
-//     // get the correct corresponding algo based on persona
-//     let algorithm = get_sig_algorithm(persona.get_cs_id()).unwrap();
-//     let sig_algo = Sig::new(algorithm).expect("Failed to create Sig object");
-
-//     // deserialize header object
-//     let header = fs::read_to_string(header)?;
-//     let header: Header = serde_json::from_str(&header)?;
-
-//     // read the file
-//     let mut in_file = File::open(file)?;
-//     let mut contents = Vec::new();
-//     let length = in_file.read_to_end(&mut contents)?;
-
-//     // verify each field
-//     header.verify_sender(&persona);
-//     header.verify_message_len(length);
-//     header.verify_hash(&contents);
-//     header.verify_signature(sig_algo, &persona);
-
-//     Ok(())
-// }
-
 // // removes the signature file associated with a given persona and file.
 // pub fn remove_signature(signature_file_name: &str) -> io::Result<()> {
 //     let signature_dir = "signatures/";
