@@ -1,5 +1,6 @@
 use clap::Parser;
 use rust_cli::commands::{self, Args, Commands};
+use rust_cli::file_ops;
 use rust_cli::wallet::Wallet;
 
 fn main() {
@@ -54,21 +55,21 @@ fn main() {
         }
         Commands::RemoveSignature { file } => {
             // Directly pass the signature file path to the verify function
-            // let result = remove_signature(&file);
-            // match result {
-            //     Ok(_) => println!("Removal successful."),
-            //     Err(e) => println!("Removal failed: {}", e),
-            // }
+            let result = file_ops::remove_signature(&file);
+            match result {
+                Ok(_) => println!("Removal successful."),
+                Err(e) => println!("Removal failed: {}", e),
+            }
         }
         Commands::ListSignatures => {
-            // if let Err(e) = list_signature_files() {
-            //     println!("Failed to list signature files: {}", e);
-            // }
+            if let Err(e) = file_ops::list_signature_files() {
+                println!("Failed to list signature files: {}", e);
+            }
         }
         Commands::ListFiles => {
-            // if let Err(e) = list_files() {
-            //     println!("Failed to list signature files: {}", e);
-            // }
+            if let Err(e) = file_ops::list_files() {
+                println!("Failed to list signature files: {}", e);
+            }
         }
         Commands::Algorithms => {
             commands::print_ids();
