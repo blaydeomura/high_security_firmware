@@ -46,10 +46,6 @@ pub enum Commands {
         #[arg(short, long)]
         name: String,
 
-        // Path to file to verify
-        #[arg(short = 's', long)]
-        sign: String,
-
         // Path to header file with verification info
         #[arg(short = 'o', long)]
         header: String,

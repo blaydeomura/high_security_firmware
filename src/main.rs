@@ -44,13 +44,16 @@ fn main() {
                 Err(e) => println!("Error signing file: {}", e),
             }
         }
-        Commands::Verify { name, sign, header } => {
+        Commands::Verify { name, header } => {
             // Directly pass the signature file path to the verify function
             // let result = verify(&name, &header, &sign, &wallet);
-            // match result {
-            //     Ok(_) => println!("Verification successful."),
-            //     Err(e) => println!("Verification failed: {}", e),
-            // }
+            
+            let cipher_suite = wallet.get_ciphersuite(&name).unwrap();
+            let result = cipher_suite.verify(&header);
+            match result {
+                Ok(_) => println!("Verification successful."),
+                Err(e) => println!("Verification failed: {}", e),
+            }
         }
         Commands::RemoveSignature { file } => {
             // Directly pass the signature file path to the verify function

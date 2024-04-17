@@ -19,8 +19,8 @@ pub struct Persona {
 
 impl Persona {
     pub fn new(name: String, cs_id: usize) -> Self {
-        let cs = get_ciphersuite(cs_id).unwrap();
-
+        //let cs = get_ciphersuite(cs_id).unwrap();
+        let cs = Box::new(cipher_suite::Dilithium2Sha256::new(name.clone(), cs_id));
         // Create new persona
         Self { name, cs_id, cs }
     }
@@ -30,16 +30,6 @@ impl Persona {
         self.name.clone()
     }
 
-    // Getter for the public key
-    pub fn get_quantum_pk(&self) -> Option<&PublicKey> {
-        self.cs.get_quantum_pk()
-    }
-
-    // Getter for the secret key
-    pub fn get_quantum_sk(&self) -> Option<&SecretKey> {
-        self.cs.get_quantum_sk()
-    }
-
     // Getter for the cs_id
     pub fn get_cs_id(&self) -> usize {
         self.cs_id
@@ -47,6 +37,10 @@ impl Persona {
 
     pub fn set_name(&mut self, name: String) {
         self.name = name;
+    }
+
+    pub fn hash(&self, buffer: &Vec<u8>) -> Vec<u8> {
+        self.cs.hash(buffer)
     }
 }
 
@@ -103,29 +97,29 @@ pub fn get_hash(cs_id: usize, buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Erro
     }
 }
 
-pub fn get_ciphersuite(cs_id: usize) -> Result<Box<dyn CipherSuite>, std::io::Error> {
-    match cs_id {
-        1 => {
-            let cs = cipher_suite::Dilithium2Sha256::new();
-            Ok(Box::new(cipher_suite::Dilithium2Sha256::new()))
-        }
-        2 => {
-            let cs = cipher_suite::Dilithium2Sha512::new();
-            Ok(Box::new(cipher_suite::Dilithium2Sha512::new()))
-        }
-        3 => {
-            let cs = cipher_suite::Falcon512Sha256::new();
-            Ok(Box::new(cipher_suite::Falcon512Sha256::new()))
-        }
-        4 => {
-            let cs = cipher_suite::Falcon512Sha512::new();
-            Ok(Box::new(cipher_suite::Falcon512Sha512::new()))
-        }
-        _ => {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Unsupported cipher suite id. Enter a value between 1-4",
-            ))
-        }
-    }
-}
+// pub fn get_ciphersuite(cs_id: usize) -> Result<Box<dyn CipherSuite>, std::io::Error> {
+//     match cs_id {
+//         1 => {
+//             let cs = cipher_suite::Dilithium2Sha256::new();
+//             Ok(Box::new(cipher_suite::Dilithium2Sha256::new()))
+//         }
+//         2 => {
+//             let cs = cipher_suite::Dilithium2Sha512::new();
+//             Ok(Box::new(cipher_suite::Dilithium2Sha512::new()))
+//         }
+//         3 => {
+//             let cs = cipher_suite::Falcon512Sha256::new();
+//             Ok(Box::new(cipher_suite::Falcon512Sha256::new()))
+//         }
+//         4 => {
+//             let cs = cipher_suite::Falcon512Sha512::new();
+//             Ok(Box::new(cipher_suite::Falcon512Sha512::new()))
+//         }
+//         _ => {
+//             return Err(io::Error::new(
+//                 io::ErrorKind::InvalidInput,
+//                 "Unsupported cipher suite id. Enter a value between 1-4",
+//             ))
+//         }
+//     }
+// }

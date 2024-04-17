@@ -1,14 +1,4 @@
-use crate::cipher_suite::CipherSuite;
-use crate::persona::{get_hash, get_sig_algorithm, Persona};
-use crate::wallet::Wallet;
-use oqs::sig::{PublicKey, Sig, Signature};
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::fs::{File, OpenOptions};
-use std::io::ErrorKind;
-use std::io::{self, Read, Write};
-use std::path::Path;
-use std::path::PathBuf;
 
 // A struct to store information about a file and its signature
 #[derive(Serialize, Deserialize, Debug)]
@@ -42,41 +32,51 @@ impl Header {
             contents,
         }
     }
+
     // Checks if public keys match
-    fn verify_sender(&self, cipher_suite: &Box<dyn CipherSuite>) {
+    pub fn verify_sender(&self, pk: Vec<u8>) {
         assert_eq!(
             self.pk,
-            cipher_suite.get_pk_bytes().to_owned(),
+            pk,
             "Verification failed: invalid public key"
         );
     }
 
     // Checks if length field matches actaul length of message
-    fn verify_message_len(&self, length: usize) {
+    pub fn verify_message_len(&self) {
         assert_eq!(
-            self.length, length,
+            self.length, self.contents.len(),
             "Verification failed: invalid message length"
         );
     }
 
     // Checks if hash of file contents matches expected hash
-    fn verify_hash(&self, contents: &Vec<u8>) {
-        let generated_hash = get_hash(self.cs_id, contents).unwrap();
+    pub fn verify_hash(&self, hash: &Vec<u8>) {
         assert!(
-            do_vecs_match(&generated_hash, &self.file_hash),
+            do_vecs_match(&hash, &self.file_hash),
             "Verification failed: invalid file contents"
         );
     }
 
-    // Accessor method for cs_id
+    // Getter method for cs_id
     pub fn get_cs_id(&self) -> usize {
         self.cs_id
     }
 
-    // // Accessor method for signer
-    // pub fn get_signer(&self) -> &PublicKey {
-    //     &self.pk
-    // }
+    // Getter method for signer
+    pub fn get_signer(&self) -> &Vec<u8> {
+        &self.pk
+    }
+
+    // Getter method for content
+    pub fn get_contents(&self) -> &Vec<u8> {
+        &self.contents
+    }
+
+    // Getter method for signature
+    pub fn get_signature(&self) -> &Vec<u8> {
+        &self.signature
+    }
 }
 
 // Helper function to check if two vectors are equal
