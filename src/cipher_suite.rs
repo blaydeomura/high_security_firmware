@@ -106,7 +106,8 @@ impl CipherSuite for Dilithium2Sha256 {
     fn verify(&self, header: &str) -> Result<(), oqs::Error> {
         // Read header file
         let header = fs::read_to_string(header).expect("Unable to read header file");
-        let header: Header = serde_json::from_str(&header).expect("Unable to deserialize header file");
+        let header: Header =
+            serde_json::from_str(&header).expect("Unable to deserialize header file");
 
         // Verify sender and message length
         header.verify_sender(self.get_pk_bytes());
@@ -203,7 +204,8 @@ impl CipherSuite for Dilithium2Sha512 {
     fn verify(&self, header: &str) -> Result<(), oqs::Error> {
         // Read header file
         let header = fs::read_to_string(header).expect("Unable to read header file");
-        let header: Header = serde_json::from_str(&header).expect("Unable to deserialize header file");
+        let header: Header =
+            serde_json::from_str(&header).expect("Unable to deserialize header file");
 
         // Verify sender and message length
         header.verify_sender(self.get_pk_bytes());
@@ -300,7 +302,8 @@ impl CipherSuite for Falcon512Sha256 {
     fn verify(&self, header: &str) -> Result<(), oqs::Error> {
         // Read header file
         let header = fs::read_to_string(header).expect("Unable to read header file");
-        let header: Header = serde_json::from_str(&header).expect("Unable to deserialize header file");
+        let header: Header =
+            serde_json::from_str(&header).expect("Unable to deserialize header file");
 
         // Verify sender and message length
         header.verify_sender(self.get_pk_bytes());
@@ -397,7 +400,8 @@ impl CipherSuite for Falcon512Sha512 {
     fn verify(&self, header: &str) -> Result<(), oqs::Error> {
         // Read header file
         let header = fs::read_to_string(header).expect("Unable to read header file");
-        let header: Header = serde_json::from_str(&header).expect("Unable to deserialize header file");
+        let header: Header =
+            serde_json::from_str(&header).expect("Unable to deserialize header file");
 
         // Verify sender and message length
         header.verify_sender(self.get_pk_bytes());
