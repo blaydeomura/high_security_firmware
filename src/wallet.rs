@@ -69,12 +69,10 @@ impl Wallet {
                     .expect("Error deserializing ciphersuite");
                 Ok(Box::new(cs))
             }
-            _ => {
-                Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "Unsupported cipher suite id. Enter a value between 1-4",
-                ))
-            }
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Unsupported cipher suite id. Enter a value between 1-4",
+            )),
         }
     }
 
@@ -111,12 +109,10 @@ impl Wallet {
                 ));
                 self.save_ciphersuite(&name, cs)
             }
-            _ => {
-                Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "Unsupported cipher suite id. Enter a value between 1-4",
-                ))
-            }
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Unsupported cipher suite id. Enter a value between 1-4",
+            )),
         }
     }
 
