@@ -56,9 +56,9 @@ cargo run -- list-files
 ```
 
 ## Examples
-* cargo run -- generate --name bob --cs-id 4
-* cargo run sign --name bob --file files/file_test.txt
-* cargo run verify --name bob --file files/file_test.txt --signature signatures/bob_file_test.txt.sig
+* cargo run -- generate --name bob --cs-id 1
+* cargo run sign --name bob --file files/file_test.txt --output ./signature_paths_directory/bob_sig_path.json
+* cargo run verify --name bob --header ./signature_paths_directory/bob_sig_path.json
 * cargo run remove-signature --file bob_file_test.txt.sig
 * cargo run remove --name bob
 * cargo run list-signatures  
