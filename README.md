@@ -55,14 +55,18 @@ cargo run -- list-signatures
 cargo run -- list-files
 ```
 
-## Examples
-* cargo run -- generate --name bob --cs-id 4
-* cargo run sign --name bob --file files/file_test.txt
-* cargo run verify --name bob --file files/file_test.txt --signature signatures/bob_file_test.txt.sig
+## Quantum Example
+* cargo run -- generate --name bob --cs-id 1
+* cargo run sign --name bob --file files/file_test.txt --output ./signature_paths_directory/bob_sig_path.json
+* cargo run verify --name bob --header ./signature_paths_directory/bob_sig_path.json
 * cargo run remove-signature --file bob_file_test.txt.sig
 * cargo run remove --name bob
 * cargo run list-signatures  
 
+## Non quantum RSA Example signing + verify
+* cargo run -- generate --name mallory --cs-id 5 //good
+* cargo run sign --name mallory --file files/file_test.txt --output ./signature_paths_directory/mallory_sig_path.json
+* cargo run verify --name mallory --header ./signature_paths_directory/mallory_sig_path.json
 
 ## Testing Core Functionality 
     1. cargo test --test official_test -- --show-output  

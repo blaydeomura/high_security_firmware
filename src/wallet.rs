@@ -6,6 +6,8 @@ use crate::cipher_suite::{
     self, CipherSuite, Dilithium2Sha256, Dilithium2Sha512, Falcon512Sha256, Falcon512Sha512,
 };
 
+use crate::cipher_suite::RsaSha256;
+
 use json::JsonValue;
 use std::collections::HashMap;
 use std::path::Path;
@@ -69,6 +71,11 @@ impl Wallet {
                     .expect("Error deserializing ciphersuite");
                 Ok(Box::new(cs))
             }
+            Some(5) => {
+                let cs: RsaSha256 = serde_json::from_str(&json_string.dump())
+                    .expect("Error deserializing ciphersuite");
+                Ok(Box::new(cs))
+            }
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "Unsupported cipher suite id. Enter a value between 1-4",
@@ -107,6 +114,10 @@ impl Wallet {
                     lower_name.clone(),
                     cs_id,
                 ));
+                self.save_ciphersuite(&name, cs)
+            }
+            5 => {
+                let cs = Box::new(cipher_suite::RsaSha256::new(lower_name.clone(), cs_id));
                 self.save_ciphersuite(&name, cs)
             }
             _ => Err(io::Error::new(
