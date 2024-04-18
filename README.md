@@ -63,7 +63,7 @@ cargo run -- list-files
 * cargo run remove --name bob
 * cargo run list-signatures  
 
-## Non quantum Example
+## Non quantum RSA Example signing + verify
 * cargo run -- generate --name mallory --cs-id 5 //good
 * cargo run sign --name mallory --file files/file_test.txt --output ./signature_paths_directory/mallory_sig_path.json
 * cargo run verify --name mallory --header ./signature_paths_directory/mallory_sig_path.json
