@@ -117,10 +117,7 @@ impl Wallet {
                 self.save_ciphersuite(&name, cs)
             }
             5 => {
-                let cs = Box::new(cipher_suite::RsaSha256::new(
-                    lower_name.clone(),
-                    cs_id,
-                ));
+                let cs = Box::new(cipher_suite::RsaSha256::new(lower_name.clone(), cs_id));
                 self.save_ciphersuite(&name, cs)
             }
             _ => Err(io::Error::new(
