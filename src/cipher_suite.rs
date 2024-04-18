@@ -12,11 +12,10 @@ use std::{
 // use rsa::{RsaPrivateKey, RsaPublicKey, pkcs1v15::{SigningKey, VerifyingKey}};
 use rsa::{pkcs1v15::Signature, RsaPrivateKey};
 use rsa::RsaPublicKey;
-use rsa::pkcs1v15::{SigningKey, VerifyingKey};
+use rsa::pkcs1v15::SigningKey;
 use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
-use serde::{Serializer, Deserializer, de};
-use std::fmt;
-use rsa::sha2::{Digest as rsa_sha2_Digest, Sha256 as rsa_sha2_Sha256};
+use serde;
+use rsa::sha2::Sha256 as rsa_sha2_Sha256;
 use rsa::pkcs1::EncodeRsaPublicKey;
 
 
@@ -486,12 +485,9 @@ impl CipherSuite for RsaSha256 {
         let contents = header.get_contents();
         let hash = self.hash(contents);
 
-        // MAYBE ERROR HERE? NEED to do signing new???
-        let mut rng = rand::thread_rng();
+        // key for signing based off of private key
         let signing_key = SigningKey::<rsa_sha2_Sha256>::new(self.sk.clone());
-        // let sig_algo = signing_key.sign_with_rng(&mut rng, &contents);
 
-        //Need to extract the secret key from this and build verifying and signinng key from the header
         // Verify sender, length of message, and hash of message
         header.verify_sender(self.pk.to_pkcs1_der().expect("Failed to serialize public key").to_vec());
         header.verify_message_len();
