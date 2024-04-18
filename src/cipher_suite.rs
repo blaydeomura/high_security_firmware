@@ -10,13 +10,14 @@ use std::{
 
 // non quantum imports
 // use rsa::{RsaPrivateKey, RsaPublicKey, pkcs1v15::{SigningKey, VerifyingKey}};
-use rsa::RsaPrivateKey;
+use rsa::{pkcs1v15::Signature, RsaPrivateKey};
 use rsa::RsaPublicKey;
 use rsa::pkcs1v15::{SigningKey, VerifyingKey};
 use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
 use serde::{Serializer, Deserializer, de};
 use std::fmt;
 use rsa::sha2::{Digest as rsa_sha2_Digest, Sha256 as rsa_sha2_Sha256};
+use rsa::pkcs1::EncodeRsaPublicKey;
 
 
 pub trait CipherSuite: erased_serde::Serialize {
@@ -420,44 +421,13 @@ impl CipherSuite for Falcon512Sha512 {
 }
 
 
-// #[derive(Serialize, Deserialize, Debug)]
-// pub struct RsaSha256 {
-//     name: String,
-//     cs_id: usize,
-//     sk: RsaPrivateKey,
-//     pk: RsaPublicKey,
-// }
-
-// impl RsaSha256 {
-//     pub fn new(name: String, cs_id: usize) -> Self {
-//         // let sig_algo =
-//         //     sig::Sig::new(sig::Algorithm::Falcon512).expect("Failed to create sig object");
-//         // let (pk, sk) = sig_algo.keypair().expect("Failed to generate keypair");
-//         let mut rng = rand::thread_rng();
-//         let bits = 2048;
-//         let private_key = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
-//         let sk = SigningKey::<rsa_sha2_Sha256>::new(private_key);
-//         let pk = sk.verifying_key();
-
-//         RsaSha256 {
-//             name,
-//             cs_id,
-//             sk,
-//             pk,
-//         }
-//     }
-
-//     pub fn get_pk(&self) -> PublicKey {
-//         self.pk.clone()
-//     }
-// }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RsaSha256 {
     name: String,
     cs_id: usize,
     sk: RsaPrivateKey,
-    // pk: RsaPublicKey,
+    pk: RsaPublicKey,
 }
 
 impl RsaSha256 {
@@ -465,15 +435,84 @@ impl RsaSha256 {
         let mut rng = rand::thread_rng();
         let bits = 2048;
         let sk = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
+        let pk = RsaPublicKey::from(&sk);
 
         RsaSha256 {
             name,
             cs_id,
             sk,
+            pk,
         }
     }
 
-    // pub fn get_pk(&self) -> PublicKey {
-    //     self.pk.clone()
-    // }
+    pub fn get_pk(&self) -> RsaPublicKey {
+        self.pk.clone()
+    }
+}
+
+impl CipherSuite for RsaSha256 {
+    fn hash(&self, buffer: &[u8]) -> Vec<u8> {
+        sha256_hash(buffer)
+    }
+
+    fn sign(&self, input: &str, output: &str) -> io::Result<()> {
+        // Read and hash the input file
+        let mut in_file = File::open(input)?;
+        let mut contents = Vec::new();
+        let length = in_file.read_to_end(&mut contents)?;
+        let file_hash: Vec<u8> = self.hash(&contents);
+
+        // Create sig object
+        // let sig_algo = Sig::new(Algorithm::Falcon512).expect("Unable to create sig object");
+        let mut rng = rand::thread_rng();
+        let signing_key = SigningKey::<rsa_sha2_Sha256>::new(self.sk.clone());
+        let signature = signing_key.sign_with_rng(&mut rng, &contents);
+        let signature = signature.to_vec();
+
+        let header = Header::new(self.cs_id, file_hash, self.pk.to_pkcs1_der().expect("Failed to serialize public key").to_vec(), signature, length, contents);
+        let header_str = serde_json::to_string_pretty(&header)?;
+
+        let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
+        Write::write_all(&mut out_file, header_str.as_bytes())?;
+
+        Ok(())
+    }
+
+    fn verify(&self, header: &str) -> io::Result<()> {
+        let header = fs::read_to_string(header)?;
+        let header: Header = serde_json::from_str(&header)?;
+
+        // Re hash contents
+        let contents = header.get_contents();
+        let hash = self.hash(contents);
+
+        // MAYBE ERROR HERE? NEED to do signing new???
+        let mut rng = rand::thread_rng();
+        let signing_key = SigningKey::<rsa_sha2_Sha256>::new(self.sk.clone());
+        // let sig_algo = signing_key.sign_with_rng(&mut rng, &contents);
+
+        //Need to extract the secret key from this and build verifying and signinng key from the header
+        // Verify sender, length of message, and hash of message
+        header.verify_sender(self.pk.to_pkcs1_der().expect("Failed to serialize public key").to_vec());
+        header.verify_message_len();
+        header.verify_hash(&hash);
+
+        // Verify signature
+        let signature_bytes = header.get_signature();
+        let signature = Signature::try_from(signature_bytes.as_slice()).map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+
+        let verifying_key = signing_key.verifying_key();
+        verifying_key.verify(contents, &signature).expect("failed to verify");
+        Ok(())
+    }
+
+    fn get_name(&self) -> &String {
+        &self.name
+    }
+
+    fn get_pk_bytes(&self) -> Vec<u8> {
+        self.get_pk().to_pkcs1_der().expect("Failed to serialize public key").to_vec()
+    }
+
+
 }
