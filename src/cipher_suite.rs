@@ -51,7 +51,7 @@ impl CS {
 pub fn create_ciphersuite(name: String, cs_id: usize) -> Result<CS, io::Error> {
     let lower_name = name.to_lowercase();
 
-    let cs = match cs_id {
+    match cs_id {
         1 => Ok(CS::CS1(Dilithium2Sha256::new(lower_name.clone(), cs_id))),
         2 => Ok(CS::CS2(Dilithium2Sha512::new(lower_name.clone(), cs_id))),
         3 => Ok(CS::CS3(Falcon512Sha256::new(lower_name.clone(), cs_id))),
@@ -61,9 +61,7 @@ pub fn create_ciphersuite(name: String, cs_id: usize) -> Result<CS, io::Error> {
             io::ErrorKind::InvalidInput,
             "Unsupported cipher suite id. Enter a value between 1-5",
         )),
-    };
-
-    cs
+    }
 }
 
 // Sha256 hash function

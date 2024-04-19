@@ -59,7 +59,7 @@ impl Wallet {
 
         let serialized = serde_json::to_string_pretty(&cs)?;
         wallet_file.write_all(&serialized.into_bytes())?;
-        wallet_file.write(b"\n")?;
+        wallet_file.write_all(b"\n")?;
 
         Ok(())
     }
@@ -79,7 +79,7 @@ impl Wallet {
         for cs in values {
             let serialized = serde_json::to_string_pretty(&cs)?;
             wallet_file.write_all(&serialized.into_bytes())?;
-            wallet_file.write(b"\n")?;
+            wallet_file.write_all(b"\n")?;
         }
 
         Ok(())
