@@ -19,26 +19,41 @@ pub enum Commands {
         #[arg(short, long)]
         name: String,
 
+        // CipherSuite ID to use
         #[arg(short, long)]
         cs_id: usize,
+
+        // Path to wallet
+        #[arg(short, long)]
+        wallet_path: String,
     },
     // Removes an existing key pair
     Remove {
         // Name of the person
         #[arg(short, long)]
         name: String,
+
+        // Path to wallet
+        #[arg(short, long)]
+        wallet_path: String,
     },
     // Signs a file with a provided persons private key
     Sign {
         // Name of the person
         #[arg(short, long)]
         name: String,
+
         // File to sign
         #[arg(short, long)]
         file: String,
+
         // Signature output
         #[arg(short = 'o', long)]
         output: String,
+
+        // Path to wallet
+        #[arg(short, long)]
+        wallet_path: String,
     },
     // Verifies the signature of a file with a provided public key
     Verify {
@@ -47,8 +62,12 @@ pub enum Commands {
         name: String,
 
         // Path to header file with verification info
-        #[arg(short = 'o', long)]
-        header: String,
+        #[arg(short, long)]
+        file: String,
+
+        // Path to wallet
+        #[arg(short, long)]
+        wallet_path: String,
     },
     RemoveSignature {
         // Signature file to remove
