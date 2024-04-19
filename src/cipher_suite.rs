@@ -15,6 +15,8 @@ use rsa::RsaPublicKey;
 use rsa::{pkcs1v15::Signature, RsaPrivateKey};
 use serde;
 
+// An interface for a suite of cryptographic algorithms
+// Contains an id, a signature scheme, and a hash function
 pub trait CipherSuite {
     fn hash(&self, buffer: &[u8]) -> Vec<u8>;
     fn sign(&self, input: &str, output: &str) -> io::Result<()>;
@@ -25,7 +27,7 @@ pub trait CipherSuite {
     fn to_enum(&self) -> CS;
 }
 
-
+// A wrapper for a trait object that allows for stream deserialization
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum CS {
     CS1(Dilithium2Sha256),
@@ -36,6 +38,7 @@ pub enum CS {
 }
 
 impl CS {
+    // Converts a CS enum to a Box pointer of the data type the enum held
     pub fn to_box(self) -> Box<dyn CipherSuite> {
         match self {
             CS::CS1(cs) => Box::new(cs),
@@ -113,6 +116,7 @@ fn quantum_sign(
     Ok(())
 }
 
+// Boilerplate for quantum verification
 fn quantum_verify(
     header: Header,
     pk_bytes: Vec<u8>,
@@ -135,6 +139,8 @@ fn quantum_verify(
     Ok(())
 }
 
+// A ciphersuite that uses Dilithium2 signature scheme and sha-256 hashing
+// CS_ID: 1
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Dilithium2Sha256 {
     name: String,
@@ -223,6 +229,8 @@ impl CipherSuite for Dilithium2Sha256 {
     }
 }
 
+// A ciphersuite that uses Dilithium2 signature scheme and sha-512 hashing
+// CS_ID 2
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Dilithium2Sha512 {
     name: String,
@@ -311,6 +319,8 @@ impl CipherSuite for Dilithium2Sha512 {
     }
 }
 
+// A ciphersuite that uses Falcon512 signature scheme and sha-256 hashing
+// CS_ID: 3
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Falcon512Sha256 {
     name: String,
@@ -399,6 +409,8 @@ impl CipherSuite for Falcon512Sha256 {
     }
 }
 
+// A ciphersuite that uses Falcon512 signature scheme and sha-512 hashing
+// CS_ID: 4
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Falcon512Sha512 {
     name: String,
@@ -487,6 +499,8 @@ impl CipherSuite for Falcon512Sha512 {
     }
 }
 
+// A ciphersuite that uses RSA PKCS signature scheme and sha-256 hashing
+// CS_ID: 5
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RsaSha256 {
     name: String,

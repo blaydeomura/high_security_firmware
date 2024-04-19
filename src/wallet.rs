@@ -22,12 +22,13 @@ impl Default for Wallet {
 }
 
 impl Wallet {
-    // Load wallet from file, or create a new wallet file if none found
+    // Create a new wallet with an empty hashmap
     pub fn new() -> Self {
         let keys = HashMap::new();
         Wallet { keys }
     }
 
+    // Load wallet contents from the provided file path
     pub fn load_wallet(&mut self, wallet_path: &str) -> std::io::Result<()> {
         // Open .wallet file
         let mut file = OpenOptions::new()
@@ -54,6 +55,7 @@ impl Wallet {
         Ok(())
     }
 
+    // Serializes a single cipher suite and writes the contents to the wallet file
     pub fn save_ciphersuite(&mut self, cs: CS, wallet_path: &str) -> std::io::Result<()> {
         let mut wallet_file = OpenOptions::new().append(true).open(wallet_path)?;
 
@@ -64,7 +66,8 @@ impl Wallet {
         Ok(())
     }
 
-    // Removes a ciphersuite from local storage and keys hashmap
+    // Removes a ciphersuite from local storage, reserialzes each existing ciphersuites,
+    // and writes them back to the wallet file
     pub fn remove_ciphersuite(&mut self, name: &str, wallet_path: &str) -> std::io::Result<()> {
         let mut wallet_file = OpenOptions::new()
             .write(true)
