@@ -1,6 +1,4 @@
 use crate::header::Header;
-use erased_serde::serialize_trait_object;
-use json::JsonValue;
 use oqs::sig::{self, Algorithm, PublicKey, SecretKey, Sig};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
@@ -17,25 +15,48 @@ use rsa::RsaPublicKey;
 use rsa::{pkcs1v15::Signature, RsaPrivateKey};
 use serde;
 
-pub trait CipherSuite: erased_serde::Serialize {
+pub trait CipherSuite {
     fn hash(&self, buffer: &[u8]) -> Vec<u8>;
     fn sign(&self, input: &str, output: &str) -> io::Result<()>;
     fn verify(&self, header: &str) -> io::Result<()>;
     fn get_name(&self) -> &String;
     fn get_pk_bytes(&self) -> Vec<u8>;
+    fn get_cs_id(&self) -> usize;
+    fn to_enum(&self) -> CS;
 }
-serialize_trait_object!(CipherSuite);
+
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum CS {
+    CS1(Dilithium2Sha256),
+    CS2(Dilithium2Sha512),
+    CS3(Falcon512Sha256),
+    CS4(Falcon512Sha512),
+    CS5(RsaSha256),
+}
+
+impl CS {
+    pub fn to_box(self) -> Box<dyn CipherSuite> {
+        match self {
+            CS::CS1(cs) => Box::new(cs),
+            CS::CS2(cs) => Box::new(cs),
+            CS::CS3(cs) => Box::new(cs),
+            CS::CS4(cs) => Box::new(cs),
+            CS::CS5(cs) => Box::new(cs),
+        }
+    }
+}
 
 // Creates a new ciphersuite object based on cs_id
-pub fn create_ciphersuite(name: String, cs_id: usize) -> Result<Box<dyn CipherSuite>, io::Error> {
+pub fn create_ciphersuite(name: String, cs_id: usize) -> Result<CS, io::Error> {
     let lower_name = name.to_lowercase();
 
     let cs = match cs_id {
-        1 => Ok(Box::new(Dilithium2Sha256::new(lower_name.clone(), cs_id)) as Box<dyn CipherSuite>),
-        2 => Ok(Box::new(Dilithium2Sha512::new(lower_name.clone(), cs_id)) as Box<dyn CipherSuite>),
-        3 => Ok(Box::new(Falcon512Sha256::new(lower_name.clone(), cs_id)) as Box<dyn CipherSuite>),
-        4 => Ok(Box::new(Falcon512Sha512::new(lower_name.clone(), cs_id)) as Box<dyn CipherSuite>),
-        5 => Ok(Box::new(RsaSha256::new(lower_name.clone(), cs_id)) as Box<dyn CipherSuite>),
+        1 => Ok(CS::CS1(Dilithium2Sha256::new(lower_name.clone(), cs_id))),
+        2 => Ok(CS::CS2(Dilithium2Sha512::new(lower_name.clone(), cs_id))),
+        3 => Ok(CS::CS3(Falcon512Sha256::new(lower_name.clone(), cs_id))),
+        4 => Ok(CS::CS4(Falcon512Sha512::new(lower_name.clone(), cs_id))),
+        5 => Ok(CS::CS5(RsaSha256::new(lower_name.clone(), cs_id))),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "Unsupported cipher suite id. Enter a value between 1-5",
@@ -45,44 +66,48 @@ pub fn create_ciphersuite(name: String, cs_id: usize) -> Result<Box<dyn CipherSu
     cs
 }
 
-// Parses a cs_id from a json string and creates the corresponding ciphersuite
-pub fn deserialize_ciphersuite(
-    json_string: JsonValue,
-) -> Result<Box<dyn CipherSuite>, std::io::Error> {
-    // Convert serde error to io error
-    let to_io_error = |_: serde_json::Error| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Error deserializing ciphersuite",
-        )
-    };
+// // Parses a cs_id from a json string and creates the corresponding ciphersuite
+// pub fn deserialize_ciphersuite(
+//     json_string: JsonValue,
+// ) -> Result<Box<dyn CipherSuite>, std::io::Error> {
+//     // Convert serde error to io error
+//     let to_io_error = |_: serde_json::Error| {
+//         io::Error::new(
+//             io::ErrorKind::InvalidData,
+//             "Error deserializing ciphersuite",
+//         )
+//     };
 
-    // Match cs id and perform deserialization
-    let cs_id = json_string["cs_id"].as_isize();
-    let cs: Result<Box<dyn CipherSuite>, std::io::Error> = match cs_id {
-        Some(1) => serde_json::from_str::<Dilithium2Sha256>(&json_string.dump())
-            .map_err(to_io_error)
-            .map(|cs| Box::new(cs) as Box<dyn CipherSuite>),
-        Some(2) => serde_json::from_str::<Dilithium2Sha512>(&json_string.dump())
-            .map_err(to_io_error)
-            .map(|cs| Box::new(cs) as Box<dyn CipherSuite>),
-        Some(3) => serde_json::from_str::<Falcon512Sha256>(&json_string.dump())
-            .map_err(to_io_error)
-            .map(|cs| Box::new(cs) as Box<dyn CipherSuite>),
-        Some(4) => serde_json::from_str::<Falcon512Sha512>(&json_string.dump())
-            .map_err(to_io_error)
-            .map(|cs| Box::new(cs) as Box<dyn CipherSuite>),
-        Some(5) => serde_json::from_str::<RsaSha256>(&json_string.dump())
-            .map_err(to_io_error)
-            .map(|cs| Box::new(cs) as Box<dyn CipherSuite>),
-        _ => Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Unsupported cipher suite id. Enter a value between 1-5",
-        )),
-    };
+//     // Match cs id and perform deserialization
+//     let cs_id = json_string["cs_id"].as_isize();
+//     let cs = match cs_id {
+//         Some(1) => serde_json::from_str::<Dilithium2Sha256>(&json_string.dump())
+//             .map_err(to_io_error)
+//             .map(|cs| CS::CS1(cs)),
+//         Some(2) => serde_json::from_str::<Dilithium2Sha512>(&json_string.dump())
+//             .map_err(to_io_error)
+//             .map(|cs| CS::CS2(cs)),
+//         Some(3) => serde_json::from_str::<Falcon512Sha256>(&json_string.dump())
+//             .map_err(to_io_error)
+//             .map(|cs| CS::CS3(cs)),
+//         Some(4) => serde_json::from_str::<Falcon512Sha512>(&json_string.dump())
+//             .map_err(to_io_error)
+//             .map(|cs| CS::CS4(cs)),
+//         Some(5) => serde_json::from_str::<RsaSha256>(&json_string.dump())
+//             .map_err(to_io_error)
+//             .map(|cs| CS::CS5(cs)),
+//         _ => Err(io::Error::new(
+//             io::ErrorKind::InvalidInput,
+//             "Unsupported cipher suite id. Enter a value between 1-5",
+//         )),
+//     };
 
-    cs
-}
+//     if let Err(e) = cs {
+//         Err(e)
+//     } else {
+//         Ok(cs.unwrap().to_box())
+//     }
+// }
 
 // Sha256 hash function
 fn sha256_hash(buffer: &[u8]) -> Vec<u8> {
@@ -155,7 +180,7 @@ fn quantum_verify(
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Dilithium2Sha256 {
     name: String,
     cs_id: usize,
@@ -233,9 +258,17 @@ impl CipherSuite for Dilithium2Sha256 {
     fn get_pk_bytes(&self) -> Vec<u8> {
         self.get_pk().into_vec()
     }
+
+    fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    fn to_enum(&self) -> CS {
+        CS::CS1(self.clone())
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Dilithium2Sha512 {
     name: String,
     cs_id: usize,
@@ -313,9 +346,17 @@ impl CipherSuite for Dilithium2Sha512 {
     fn get_pk_bytes(&self) -> Vec<u8> {
         self.get_pk().into_vec()
     }
+
+    fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    fn to_enum(&self) -> CS {
+        CS::CS2(self.clone())
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Falcon512Sha256 {
     name: String,
     cs_id: usize,
@@ -393,9 +434,17 @@ impl CipherSuite for Falcon512Sha256 {
     fn get_pk_bytes(&self) -> Vec<u8> {
         self.get_pk().into_vec()
     }
+
+    fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    fn to_enum(&self) -> CS {
+        CS::CS3(self.clone())
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Falcon512Sha512 {
     name: String,
     cs_id: usize,
@@ -473,9 +522,17 @@ impl CipherSuite for Falcon512Sha512 {
     fn get_pk_bytes(&self) -> Vec<u8> {
         self.get_pk().into_vec()
     }
+
+    fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    fn to_enum(&self) -> CS {
+        CS::CS4(self.clone())
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RsaSha256 {
     name: String,
     cs_id: usize,
@@ -582,5 +639,13 @@ impl CipherSuite for RsaSha256 {
             .to_pkcs1_der()
             .expect("Failed to serialize public key")
             .to_vec()
+    }
+
+    fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    fn to_enum(&self) -> CS {
+        CS::CS5(self.clone())
     }
 }
