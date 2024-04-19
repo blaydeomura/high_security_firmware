@@ -1,7 +1,7 @@
 use clap::Parser;
 use rust_cli::commands::{self, Args, Commands};
-use rust_cli::file_ops;
 use rust_cli::wallet::Wallet;
+use rust_cli::{cipher_suite, file_ops};
 
 fn main() {
     let args = Args::parse();
@@ -14,43 +14,39 @@ fn main() {
 
     match args.command {
         Commands::Generate { name, cs_id } => {
-            let result = wallet.create_ciphersuite(name, cs_id);
-            match result {
-                Ok(_) => {
-                    println!("Persona created successfully");
-                }
-                Err(e) => {
-                    println!("Error creating persona {}", e);
-                }
+            let cs =
+                cipher_suite::create_ciphersuite(name, cs_id).expect("Error creating ciphersuite");
+            let result = wallet.save_ciphersuite(cs);
+            if let Err(e) = result {
+                println!("Error creating ciphersuite: {}", e);
+            } else {
+                println!("Ciphersuite created successfully");
             }
         }
         Commands::Remove { name } => {
             let result = wallet.remove_ciphersuite(&name);
-            match result {
-                Ok(_) => {
-                    println!("Persona removed successfully");
-                }
-                Err(e) => {
-                    println!("Error removing persona: {}", e);
-                }
+            if let Err(e) = result {
+                println!("Error removing ciphersuite: {}", e);
+            } else {
+                println!("Ciphersuite removed successfully");
             }
         }
         Commands::Sign { name, file, output } => {
             let cipher_suite = wallet.get_ciphersuite(&name).unwrap();
             let result = cipher_suite.sign(&file, &output);
-            match result {
-                Ok(_) => {
-                    println!("Signature created successfully.");
-                }
-                Err(e) => println!("Error signing file: {}", e),
+            if let Err(e) = result {
+                println!("Signing error: {}", e);
+            } else {
+                println!("File signed successfully");
             }
         }
         Commands::Verify { name, header } => {
             let cipher_suite = wallet.get_ciphersuite(&name).unwrap();
             let result = cipher_suite.verify(&header);
-            match result {
-                Ok(_) => println!("Verification successful."),
-                Err(e) => println!("Verification failed: {}", e),
+            if let Err(e) = result {
+                println!("Verification error: {}", e);
+            } else {
+                println!("File verified successfully");
             }
         }
         Commands::RemoveSignature { file } => {
