@@ -6,33 +6,46 @@ use rust_cli::{cipher_suite, file_ops};
 fn main() {
     let args = Args::parse();
     let mut wallet = Wallet::new();
-    wallet
-        .load_wallet(String::from("wallet"))
-        .unwrap_or_else(|_| {
-            panic!("Error loading wallet");
-        });
 
     match args.command {
-        Commands::Generate { name, cs_id } => {
+        Commands::Generate {
+            name,
+            cs_id,
+            wallet_path,
+        } => {
+            wallet
+                .load_wallet(&wallet_path)
+                .expect("Unable to load wallet");
             let cs =
                 cipher_suite::create_ciphersuite(name, cs_id).expect("Error creating ciphersuite");
-            let result = wallet.save_ciphersuite(cs);
+            let result = wallet.save_ciphersuite(cs, &wallet_path);
             if let Err(e) = result {
                 println!("Error creating ciphersuite: {}", e);
             } else {
                 println!("Ciphersuite created successfully");
             }
         }
-        Commands::Remove { name } => {
-            let result = wallet.remove_ciphersuite(&name);
+        Commands::Remove { name, wallet_path } => {
+            wallet
+                .load_wallet(&wallet_path)
+                .expect("Unable to load wallet");
+            let result = wallet.remove_ciphersuite(&name, &wallet_path);
             if let Err(e) = result {
                 println!("Error removing ciphersuite: {}", e);
             } else {
                 println!("Ciphersuite removed successfully");
             }
         }
-        Commands::Sign { name, file, output } => {
-            let cipher_suite = wallet.get_ciphersuite(&name).unwrap();
+        Commands::Sign {
+            name,
+            file,
+            output,
+            wallet_path,
+        } => {
+            wallet
+                .load_wallet(&wallet_path)
+                .expect("Unable to load wallet");
+            let cipher_suite = wallet.get_ciphersuite(&name).unwrap().to_box();
             let result = cipher_suite.sign(&file, &output);
             if let Err(e) = result {
                 println!("Signing error: {}", e);
@@ -40,9 +53,16 @@ fn main() {
                 println!("File signed successfully");
             }
         }
-        Commands::Verify { name, header } => {
-            let cipher_suite = wallet.get_ciphersuite(&name).unwrap();
-            let result = cipher_suite.verify(&header);
+        Commands::Verify {
+            name,
+            file,
+            wallet_path,
+        } => {
+            wallet
+                .load_wallet(&wallet_path)
+                .expect("Unable to load wallet");
+            let cipher_suite = wallet.get_ciphersuite(&name).unwrap().to_box();
+            let result = cipher_suite.verify(&file);
             if let Err(e) = result {
                 println!("Verification error: {}", e);
             } else {
