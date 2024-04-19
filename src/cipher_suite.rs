@@ -66,49 +66,6 @@ pub fn create_ciphersuite(name: String, cs_id: usize) -> Result<CS, io::Error> {
     cs
 }
 
-// // Parses a cs_id from a json string and creates the corresponding ciphersuite
-// pub fn deserialize_ciphersuite(
-//     json_string: JsonValue,
-// ) -> Result<Box<dyn CipherSuite>, std::io::Error> {
-//     // Convert serde error to io error
-//     let to_io_error = |_: serde_json::Error| {
-//         io::Error::new(
-//             io::ErrorKind::InvalidData,
-//             "Error deserializing ciphersuite",
-//         )
-//     };
-
-//     // Match cs id and perform deserialization
-//     let cs_id = json_string["cs_id"].as_isize();
-//     let cs = match cs_id {
-//         Some(1) => serde_json::from_str::<Dilithium2Sha256>(&json_string.dump())
-//             .map_err(to_io_error)
-//             .map(|cs| CS::CS1(cs)),
-//         Some(2) => serde_json::from_str::<Dilithium2Sha512>(&json_string.dump())
-//             .map_err(to_io_error)
-//             .map(|cs| CS::CS2(cs)),
-//         Some(3) => serde_json::from_str::<Falcon512Sha256>(&json_string.dump())
-//             .map_err(to_io_error)
-//             .map(|cs| CS::CS3(cs)),
-//         Some(4) => serde_json::from_str::<Falcon512Sha512>(&json_string.dump())
-//             .map_err(to_io_error)
-//             .map(|cs| CS::CS4(cs)),
-//         Some(5) => serde_json::from_str::<RsaSha256>(&json_string.dump())
-//             .map_err(to_io_error)
-//             .map(|cs| CS::CS5(cs)),
-//         _ => Err(io::Error::new(
-//             io::ErrorKind::InvalidInput,
-//             "Unsupported cipher suite id. Enter a value between 1-5",
-//         )),
-//     };
-
-//     if let Err(e) = cs {
-//         Err(e)
-//     } else {
-//         Ok(cs.unwrap().to_box())
-//     }
-// }
-
 // Sha256 hash function
 fn sha256_hash(buffer: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
