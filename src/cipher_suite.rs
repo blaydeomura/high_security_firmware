@@ -7,9 +7,6 @@ use std::{
     fs::{self, File, OpenOptions},
     io::{self, Read, Write},
 };
-
-// non quantum imports
-// use rsa::{RsaPrivateKey, RsaPublicKey, pkcs1v15::{SigningKey, VerifyingKey}};
 use rsa::pkcs1::EncodeRsaPublicKey;
 use rsa::pkcs1v15::SigningKey;
 use rsa::sha2::Sha256 as rsa_sha2_Sha256;

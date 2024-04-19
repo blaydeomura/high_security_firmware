@@ -3,33 +3,31 @@ use serde::{Deserialize, Serialize};
 // A struct to store information about a file and its signature
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Header {
+    file_name: Vec<u8>,
     file_type: usize,
     cs_id: usize,
     length: usize,
     file_hash: Vec<u8>,
     pk: Vec<u8>,
-    signature: Vec<u8>,
-    contents: Vec<u8>,
 }
 
 impl Header {
     // Constructs a header with the given information
     pub fn new(
+        file_name: Vec<u8>,
+        file_type: usize,
         cs_id: usize,
+        length: usize,
         file_hash: Vec<u8>,
         pk: Vec<u8>,
-        signature: Vec<u8>,
-        length: usize,
-        contents: Vec<u8>,
     ) -> Self {
         Header {
+            file_name,
             file_type: 1,
             cs_id,
             length,
             file_hash,
             pk,
-            signature,
-            contents,
         }
     }
 
@@ -38,14 +36,14 @@ impl Header {
         assert_eq!(self.pk, pk, "Verification failed: invalid public key");
     }
 
-    // Checks if length field matches actaul length of message
-    pub fn verify_message_len(&self) {
-        assert_eq!(
-            self.length,
-            self.contents.len(),
-            "Verification failed: invalid message length"
-        );
-    }
+    // // Checks if length field matches actaul length of message
+    // pub fn verify_message_len(&self) {
+    //     assert_eq!(
+    //         self.length,
+    //         self.contents.len(),
+    //         "Verification failed: invalid message length"
+    //     );
+    // }
 
     // Checks if hash of file contents matches expected hash
     pub fn verify_hash(&self, hash: &[u8]) {
@@ -63,6 +61,30 @@ impl Header {
     // Getter method for signer
     pub fn get_signer(&self) -> &Vec<u8> {
         &self.pk
+    }
+}
+
+
+// A struct to store information about a file and its signature
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SignedData {
+    header: Header,
+    signature: Vec<u8>,
+    contents: Vec<u8>,
+}
+
+impl SignedData {
+    // Constructs a header with the given information
+    pub fn new(
+        header: Header,
+        signature: Vec<u8>,
+        contents: Vec<u8>,
+    ) -> Self {
+        SignedData {
+            header,
+            signature,
+            contents,
+        }
     }
 
     // Getter method for content
