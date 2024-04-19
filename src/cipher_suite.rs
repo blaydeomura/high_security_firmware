@@ -1,5 +1,6 @@
 use crate::header::Header;
 use erased_serde::serialize_trait_object;
+use json::JsonValue;
 use oqs::sig::{self, Algorithm, PublicKey, SecretKey, Sig};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
@@ -8,8 +9,6 @@ use std::{
     io::{self, Read, Write},
 };
 
-// non quantum imports
-// use rsa::{RsaPrivateKey, RsaPublicKey, pkcs1v15::{SigningKey, VerifyingKey}};
 use rsa::pkcs1::EncodeRsaPublicKey;
 use rsa::pkcs1v15::SigningKey;
 use rsa::sha2::Sha256 as rsa_sha2_Sha256;
@@ -26,6 +25,64 @@ pub trait CipherSuite: erased_serde::Serialize {
     fn get_pk_bytes(&self) -> Vec<u8>;
 }
 serialize_trait_object!(CipherSuite);
+
+// Creates a new ciphersuite object based on cs_id
+pub fn create_ciphersuite(name: String, cs_id: usize) -> Result<Box<dyn CipherSuite>, io::Error> {
+    let lower_name = name.to_lowercase();
+
+    let cs = match cs_id {
+        1 => Ok(Box::new(Dilithium2Sha256::new(lower_name.clone(), cs_id)) as Box<dyn CipherSuite>),
+        2 => Ok(Box::new(Dilithium2Sha512::new(lower_name.clone(), cs_id)) as Box<dyn CipherSuite>),
+        3 => Ok(Box::new(Falcon512Sha256::new(lower_name.clone(), cs_id)) as Box<dyn CipherSuite>),
+        4 => Ok(Box::new(Falcon512Sha512::new(lower_name.clone(), cs_id)) as Box<dyn CipherSuite>),
+        5 => Ok(Box::new(RsaSha256::new(lower_name.clone(), cs_id)) as Box<dyn CipherSuite>),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Unsupported cipher suite id. Enter a value between 1-5",
+        )),
+    };
+
+    cs
+}
+
+// Parses a cs_id from a json string and creates the corresponding ciphersuite
+pub fn deserialize_ciphersuite(
+    json_string: JsonValue,
+) -> Result<Box<dyn CipherSuite>, std::io::Error> {
+    // Convert serde error to io error
+    let to_io_error = |_: serde_json::Error| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Error deserializing ciphersuite",
+        )
+    };
+
+    // Match cs id and perform deserialization
+    let cs_id = json_string["cs_id"].as_isize();
+    let cs: Result<Box<dyn CipherSuite>, std::io::Error> = match cs_id {
+        Some(1) => serde_json::from_str::<Dilithium2Sha256>(&json_string.dump())
+            .map_err(to_io_error)
+            .map(|cs| Box::new(cs) as Box<dyn CipherSuite>),
+        Some(2) => serde_json::from_str::<Dilithium2Sha512>(&json_string.dump())
+            .map_err(to_io_error)
+            .map(|cs| Box::new(cs) as Box<dyn CipherSuite>),
+        Some(3) => serde_json::from_str::<Falcon512Sha256>(&json_string.dump())
+            .map_err(to_io_error)
+            .map(|cs| Box::new(cs) as Box<dyn CipherSuite>),
+        Some(4) => serde_json::from_str::<Falcon512Sha512>(&json_string.dump())
+            .map_err(to_io_error)
+            .map(|cs| Box::new(cs) as Box<dyn CipherSuite>),
+        Some(5) => serde_json::from_str::<RsaSha256>(&json_string.dump())
+            .map_err(to_io_error)
+            .map(|cs| Box::new(cs) as Box<dyn CipherSuite>),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Unsupported cipher suite id. Enter a value between 1-5",
+        )),
+    };
+
+    cs
+}
 
 // Sha256 hash function
 fn sha256_hash(buffer: &[u8]) -> Vec<u8> {
