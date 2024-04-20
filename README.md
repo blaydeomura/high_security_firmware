@@ -43,15 +43,23 @@ cargo run -- remove --name <name> --wallet <path to wallet>
 ## Quantum Example
 ```
 cargo run -- generate -n bob -c 1 -w .wallet
+cargo run -- generate -n mallory -c 2 -w .wallet
+
 ```
 ```
-cargo run sign -n bob -f files/file_test.txt -o file_test_sig -w .wallet
+cargo run sign -n bob -f README.md -o bob_test_sig -w .wallet
+cargo run sign -n mallory -f README.md -o mallory_test_sig -w .wallet
+
 ```
 ```
-cargo run verify -n bob -f file_test_sig -w .wallet
+cargo run verify -n bob -f bob_test_sig -w .wallet
+cargo run verify -n mallory -f mallory_test_sig -w .wallet
 ```
 ```
 cargo run remove -n bob -w .wallet
+cargo run remove -n mallory -w .wallet
+
+```
 ```
 
 ## Non quantum RSA Example signing + verify
@@ -71,4 +79,4 @@ cargo test --test official_test -- --show-output
 ``` 
 
 ## Persistence
-- Wallet data is stored in wallet file. By convention, this file is called .wallet
+- Persona data is stored in wallet directory in json format. 
