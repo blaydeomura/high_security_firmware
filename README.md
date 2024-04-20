@@ -40,20 +40,6 @@ cargo run -- verify --name <name of signer> --file <signed data file> --wallet <
 cargo run -- remove --name <name> --wallet <path to wallet>
 ```
 
-* Remove signature file
-```
-cargo run -- remove-signature --file <path to signature file>
-```
-
-* List signature files
-```
-cargo run -- list-signatures
-```
-* List of files to sing
-```
-cargo run -- list-files
-```
-
 ## Quantum Example
 ```
 cargo run -- generate -n bob -c 1 -w .wallet
