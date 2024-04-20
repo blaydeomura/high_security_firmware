@@ -2,21 +2,17 @@
 // Wallet contents are stored in JSON format
 // Operations include loading wallet from file, saving wallet to file, and adding and removing keys
 
-use crate::cipher_suite::{
-    self, CipherSuite, Dilithium2Sha256, Dilithium2Sha512, Falcon512Sha256, Falcon512Sha512,
-};
+use serde_json::Deserializer;
 
-use crate::cipher_suite::RsaSha256;
-
-use json::JsonValue;
+use crate::cipher_suite::CS;
 use std::collections::HashMap;
-use std::path::Path;
-use std::{fs, io};
+use std::fs::OpenOptions;
+use std::io::{Read, Write};
 
 // Wallet contains a hashmap with names of individuals and associated ciphersuite objects
 
 pub struct Wallet {
-    pub keys: HashMap<String, Box<dyn CipherSuite>>, // Maps a name to a ciphersuite object
+    pub keys: HashMap<String, CS>, // Maps a name to a ciphersuite object
 }
 
 impl Default for Wallet {
@@ -26,134 +22,74 @@ impl Default for Wallet {
 }
 
 impl Wallet {
-    // Load wallet from file, or create a new wallet file if none found
+    // Create a new wallet with an empty hashmap
     pub fn new() -> Self {
         let keys = HashMap::new();
         Wallet { keys }
     }
 
-    // Opens all persona files in wallet folder and loads them into hashmap
-    pub fn load_wallet(&mut self, dir_path: String) -> std::io::Result<()> {
-        for entry in fs::read_dir(dir_path)? {
-            let dir = entry?;
-            let content = fs::read_to_string(dir.path())?;
-            let json_string = json::parse(&content).unwrap();
-            let cipher_suite = Self::deserialize_ciphersuite(json_string).unwrap();
-            self.keys
-                .insert(cipher_suite.get_name().clone(), cipher_suite);
+    // Load wallet contents from the provided file path
+    pub fn load_wallet(&mut self, wallet_path: &str) -> std::io::Result<()> {
+        // Open .wallet file
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(true)
+            .open(wallet_path)?;
+
+        // Read contents into string
+        let mut buffer = String::new();
+        let bytes_read = file.read_to_string(&mut buffer)?;
+
+        // Deserialize ciphersuites
+        if bytes_read > 0 {
+            let stream = Deserializer::from_str(&buffer).into_iter::<CS>();
+            for cs in stream {
+                let cs = cs.expect("Unable to deserialize ciphersuite");
+                let cs_clone = cs.clone();
+                self.keys
+                    .insert(cs.to_box().get_name().to_string(), cs_clone);
+            }
         }
+
         Ok(())
     }
 
-    // Parses a cs_id from a json string and creates the corresponding ciphersuite
-    pub fn deserialize_ciphersuite(
-        json_string: JsonValue,
-    ) -> Result<Box<dyn CipherSuite>, std::io::Error> {
-        let cs_id = json_string["cs_id"].as_isize();
-        match cs_id {
-            Some(1) => {
-                let cs: Dilithium2Sha256 = serde_json::from_str(&json_string.dump())
-                    .expect("Error deserializing ciphersuite");
-                Ok(Box::new(cs))
-            }
-            Some(2) => {
-                let cs: Dilithium2Sha512 = serde_json::from_str(&json_string.dump())
-                    .expect("Error deserializing ciphersuite");
-                Ok(Box::new(cs))
-            }
-            Some(3) => {
-                let cs: Falcon512Sha256 = serde_json::from_str(&json_string.dump())
-                    .expect("Error deserializing ciphersuite");
-                Ok(Box::new(cs))
-            }
-            Some(4) => {
-                let cs: Falcon512Sha512 = serde_json::from_str(&json_string.dump())
-                    .expect("Error deserializing ciphersuite");
-                Ok(Box::new(cs))
-            }
-            Some(5) => {
-                let cs: RsaSha256 = serde_json::from_str(&json_string.dump())
-                    .expect("Error deserializing ciphersuite");
-                Ok(Box::new(cs))
-            }
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Unsupported cipher suite id. Enter a value between 1-4",
-            )),
-        }
-    }
+    // Serializes a single cipher suite and writes the contents to the wallet file
+    pub fn save_ciphersuite(&mut self, cs: CS, wallet_path: &str) -> std::io::Result<()> {
+        let mut wallet_file = OpenOptions::new().append(true).open(wallet_path)?;
 
-    // Creates a new ciphersuite object and serializes it
-    pub fn create_ciphersuite(&mut self, name: String, cs_id: usize) -> Result<(), io::Error> {
-        let lower_name = name.to_lowercase();
-
-        match cs_id {
-            1 => {
-                let cs = Box::new(cipher_suite::Dilithium2Sha256::new(
-                    lower_name.clone(),
-                    cs_id,
-                ));
-                self.save_ciphersuite(&name, cs)
-            }
-            2 => {
-                let cs = Box::new(cipher_suite::Dilithium2Sha512::new(
-                    lower_name.clone(),
-                    cs_id,
-                ));
-                self.save_ciphersuite(&name, cs)
-            }
-            3 => {
-                let cs = Box::new(cipher_suite::Falcon512Sha256::new(
-                    lower_name.clone(),
-                    cs_id,
-                ));
-                self.save_ciphersuite(&name, cs)
-            }
-            4 => {
-                let cs = Box::new(cipher_suite::Falcon512Sha512::new(
-                    lower_name.clone(),
-                    cs_id,
-                ));
-                self.save_ciphersuite(&name, cs)
-            }
-            5 => {
-                let cs = Box::new(cipher_suite::RsaSha256::new(lower_name.clone(), cs_id));
-                self.save_ciphersuite(&name, cs)
-            }
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Unsupported cipher suite id. Enter a value between 1-4",
-            )),
-        }
-    }
-
-    // Serializes a ciphersuite object and saves it in keys hashmap
-    pub fn save_ciphersuite(
-        &mut self,
-        name: &str,
-        cs: Box<dyn CipherSuite>,
-    ) -> std::io::Result<()> {
-        let path_str = format!("wallet/{}.json", name);
-        let path = Path::new(&path_str);
         let serialized = serde_json::to_string_pretty(&cs)?;
-        fs::write(path, serialized)?;
-        self.keys.insert(name.to_string(), cs);
+        wallet_file.write_all(&serialized.into_bytes())?;
+        wallet_file.write_all(b"\n")?;
+
         Ok(())
     }
 
-    // Removes a ciphersuite from local storage and keys hashmap
-    pub fn remove_ciphersuite(&mut self, name: &str) -> std::io::Result<()> {
+    // Removes a ciphersuite from local storage, reserialzes each existing ciphersuites,
+    // and writes them back to the wallet file
+    pub fn remove_ciphersuite(&mut self, name: &str, wallet_path: &str) -> std::io::Result<()> {
+        let mut wallet_file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(wallet_path)?;
         // Convert name to lower case for case-insensitive handling
         let lower_name = name.to_lowercase();
 
+        // Remove from map and reserialize wallet
         self.keys.remove(&lower_name);
-        let path_str = format!("wallet/{}.json", lower_name);
-        fs::remove_file(path_str)?;
+        let values: Vec<CS> = self.keys.values().cloned().collect();
+        for cs in values {
+            let serialized = serde_json::to_string_pretty(&cs)?;
+            wallet_file.write_all(&serialized.into_bytes())?;
+            wallet_file.write_all(b"\n")?;
+        }
+
         Ok(())
     }
 
     // Getter for name of persona
-    pub fn get_ciphersuite(&self, name: &str) -> Option<&Box<dyn CipherSuite>> {
-        self.keys.get(&name.to_lowercase())
+    pub fn get_ciphersuite(&self, name: &str) -> Option<CS> {
+        self.keys.get(&name.to_lowercase()).cloned()
     }
 }

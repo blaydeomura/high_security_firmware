@@ -1,5 +1,4 @@
 use crate::header::Header;
-use erased_serde::serialize_trait_object;
 use oqs::sig::{self, Algorithm, PublicKey, SecretKey, Sig};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
@@ -14,15 +13,59 @@ use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
 use rsa::RsaPublicKey;
 use rsa::{pkcs1v15::Signature, RsaPrivateKey};
 use serde;
+use crate::header::SignedData;
 
-pub trait CipherSuite: erased_serde::Serialize {
+// An interface for a suite of cryptographic algorithms
+// Contains an id, a signature scheme, and a hash function
+pub trait CipherSuite {
     fn hash(&self, buffer: &[u8]) -> Vec<u8>;
     fn sign(&self, input: &str, output: &str) -> io::Result<()>;
     fn verify(&self, header: &str) -> io::Result<()>;
     fn get_name(&self) -> &String;
     fn get_pk_bytes(&self) -> Vec<u8>;
+    fn get_cs_id(&self) -> usize;
+    fn to_enum(&self) -> CS;
 }
-serialize_trait_object!(CipherSuite);
+
+// A wrapper for a trait object that allows for stream deserialization
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum CS {
+    CS1(Dilithium2Sha256),
+    CS2(Dilithium2Sha512),
+    CS3(Falcon512Sha256),
+    CS4(Falcon512Sha512),
+    CS5(RsaSha256),
+}
+
+impl CS {
+    // Converts a CS enum to a Box pointer of the data type the enum held
+    pub fn to_box(self) -> Box<dyn CipherSuite> {
+        match self {
+            CS::CS1(cs) => Box::new(cs),
+            CS::CS2(cs) => Box::new(cs),
+            CS::CS3(cs) => Box::new(cs),
+            CS::CS4(cs) => Box::new(cs),
+            CS::CS5(cs) => Box::new(cs),
+        }
+    }
+}
+
+// Creates a new ciphersuite object based on cs_id
+pub fn create_ciphersuite(name: String, cs_id: usize) -> Result<CS, io::Error> {
+    let lower_name = name.to_lowercase();
+
+    match cs_id {
+        1 => Ok(CS::CS1(Dilithium2Sha256::new(lower_name.clone(), cs_id))),
+        2 => Ok(CS::CS2(Dilithium2Sha512::new(lower_name.clone(), cs_id))),
+        3 => Ok(CS::CS3(Falcon512Sha256::new(lower_name.clone(), cs_id))),
+        4 => Ok(CS::CS4(Falcon512Sha512::new(lower_name.clone(), cs_id))),
+        5 => Ok(CS::CS5(RsaSha256::new(lower_name.clone(), cs_id))),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Unsupported cipher suite id. Enter a value between 1-5",
+        )),
+    }
+}
 
 // Sha256 hash function
 fn sha256_hash(buffer: &[u8]) -> Vec<u8> {
@@ -45,34 +88,75 @@ fn blake3_hash(buffer: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-// Boilerplate function for quantum signing
-fn quantum_sign(
+// // Boilerplate function for quantum signing
+// fn quantum_sign(
+//     file_name: Vec<u8>,
+//     cs_id: usize,
+//     contents: Vec<u8>,
+//     file_hash: Vec<u8>,
+//     length: usize,
+//     output: &str,
+//     sig_algo: Sig,
+//     pk_bytes: Vec<u8>,
+//     sk: &SecretKey,
+// ) -> io::Result<()> {
+//     // Sign file
+//     let signature = sig_algo
+//         .sign(&file_hash, sk)
+//         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
+//     let signature = signature.into_vec();
+
+//     // Construct header
+//     // let header = Header::new(file_name, cs_id, length, file_hash, pk_bytes);
+//     let header = Header::new(file_name, cs_id, length, file_hash, pk_bytes, signature);
+
+//     let header_str = serde_json::to_string_pretty(&header)?;
+
+//     // Write header contents to signature file
+//     let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
+//     Write::write_all(&mut out_file, header_str.as_bytes())?;
+
+//     Ok(())
+// }
+
+//-----NEW QUANTUM SIGN-------
+pub fn quantum_sign(
+    file_name: Vec<u8>,
     cs_id: usize,
     contents: Vec<u8>,
-    file_hash: Vec<u8>,
     length: usize,
     output: &str,
     sig_algo: Sig,
     pk_bytes: Vec<u8>,
     sk: &SecretKey,
+    cs: Box<dyn CipherSuite>
 ) -> io::Result<()> {
-    // Sign file
-    let signature = sig_algo
-        .sign(&file_hash, sk)
+    // Serialize the preliminary header (without signature)
+    let file_hash = cs.hash(&contents); // Use the dynamic hash function
+    let preliminary_header = Header::new(file_name.clone(), cs_id, length, file_hash.clone(), pk_bytes.clone(), vec![]);
+    let prelim_header_bytes = serde_json::to_vec(&preliminary_header)?;
+
+    // Hash the serialized preliminary header
+    let hashed_header = cs.hash(&prelim_header_bytes);
+
+    // Sign the hash
+    let signature = sig_algo.sign(&hashed_header, sk)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
-    let signature = signature.into_vec();
+    
+    // Construct the complete header including the signature
+    let complete_header = Header::new(file_name, cs_id, length, file_hash, pk_bytes, signature.into_vec());
 
-    // Construct header
-    let header = Header::new(cs_id, file_hash, pk_bytes, signature, length, contents);
-    let header_str = serde_json::to_string_pretty(&header)?;
+    // Serialize the complete header
+    let header_str = serde_json::to_string_pretty(&complete_header)?;
 
-    // Write header contents to signature file
-    let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
+    // Write serialized header to output file
+    let mut out_file = OpenOptions::new().write(true).create(true).open(output)?;
     Write::write_all(&mut out_file, header_str.as_bytes())?;
 
     Ok(())
 }
 
+// Boilerplate for quantum verification
 fn quantum_verify(
     header: Header,
     pk_bytes: Vec<u8>,
@@ -81,7 +165,7 @@ fn quantum_verify(
 ) -> io::Result<()> {
     // Verify sender, length of message, and hash of message
     header.verify_sender(pk_bytes);
-    header.verify_message_len();
+    // header.verify_message_len();
     header.verify_hash(&hash);
 
     // Verify signature
@@ -95,7 +179,9 @@ fn quantum_verify(
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+// A ciphersuite that uses Dilithium2 signature scheme and sha-256 hashing
+// CS_ID: 1
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Dilithium2Sha256 {
     name: String,
     cs_id: usize,
@@ -173,9 +259,19 @@ impl CipherSuite for Dilithium2Sha256 {
     fn get_pk_bytes(&self) -> Vec<u8> {
         self.get_pk().into_vec()
     }
+
+    fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    fn to_enum(&self) -> CS {
+        CS::CS1(self.clone())
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+// A ciphersuite that uses Dilithium2 signature scheme and sha-512 hashing
+// CS_ID 2
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Dilithium2Sha512 {
     name: String,
     cs_id: usize,
@@ -253,9 +349,19 @@ impl CipherSuite for Dilithium2Sha512 {
     fn get_pk_bytes(&self) -> Vec<u8> {
         self.get_pk().into_vec()
     }
+
+    fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    fn to_enum(&self) -> CS {
+        CS::CS2(self.clone())
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+// A ciphersuite that uses Falcon512 signature scheme and sha-256 hashing
+// CS_ID: 3
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Falcon512Sha256 {
     name: String,
     cs_id: usize,
@@ -333,9 +439,19 @@ impl CipherSuite for Falcon512Sha256 {
     fn get_pk_bytes(&self) -> Vec<u8> {
         self.get_pk().into_vec()
     }
+
+    fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    fn to_enum(&self) -> CS {
+        CS::CS3(self.clone())
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+// A ciphersuite that uses Falcon512 signature scheme and sha-512 hashing
+// CS_ID: 4
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Falcon512Sha512 {
     name: String,
     cs_id: usize,
@@ -413,9 +529,19 @@ impl CipherSuite for Falcon512Sha512 {
     fn get_pk_bytes(&self) -> Vec<u8> {
         self.get_pk().into_vec()
     }
+
+    fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    fn to_enum(&self) -> CS {
+        CS::CS4(self.clone())
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+// A ciphersuite that uses RSA PKCS signature scheme and sha-256 hashing
+// CS_ID: 5
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RsaSha256 {
     name: String,
     cs_id: usize,
@@ -522,5 +648,13 @@ impl CipherSuite for RsaSha256 {
             .to_pkcs1_der()
             .expect("Failed to serialize public key")
             .to_vec()
+    }
+
+    fn get_cs_id(&self) -> usize {
+        self.cs_id
+    }
+
+    fn to_enum(&self) -> CS {
+        CS::CS5(self.clone())
     }
 }

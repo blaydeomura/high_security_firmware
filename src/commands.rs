@@ -13,50 +13,63 @@ pub struct Args {
 // Possible commands that the program accepts
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    // Generates a new key pair for a given name and encryption key
+    // Generates a new cipher suite object and saves it in wallet
     Generate {
         // Name of the person
         #[arg(short, long)]
         name: String,
 
+        // CipherSuite ID to use
         #[arg(short, long)]
         cs_id: usize,
+
+        // Path to wallet
+        #[arg(short, long)]
+        wallet_path: String,
     },
-    // Removes an existing key pair
+    // Removes an existing ciphersuite object from wallet
     Remove {
         // Name of the person
         #[arg(short, long)]
         name: String,
+
+        // Path to wallet
+        #[arg(short, long)]
+        wallet_path: String,
     },
-    // Signs a file with a provided persons private key
+    // Signs a file using specified ciphersuites private key
+    // Outputs a signed data file
     Sign {
         // Name of the person
         #[arg(short, long)]
         name: String,
+
         // File to sign
         #[arg(short, long)]
         file: String,
+
         // Signature output
         #[arg(short = 'o', long)]
         output: String,
+
+        // Path to wallet
+        #[arg(short, long)]
+        wallet_path: String,
     },
-    // Verifies the signature of a file with a provided public key
+    // Verifies a signed data file with a ciphersuites public key
     Verify {
         // Name of the person
         #[arg(short, long)]
         name: String,
 
         // Path to header file with verification info
-        #[arg(short = 'o', long)]
-        header: String,
-    },
-    RemoveSignature {
-        // Signature file to remove
         #[arg(short, long)]
         file: String,
+
+        // Path to wallet
+        #[arg(short, long)]
+        wallet_path: String,
     },
-    ListSignatures,
-    ListFiles,
     Algorithms,
 }
 
