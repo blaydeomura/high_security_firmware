@@ -70,13 +70,6 @@ pub enum Commands {
         #[arg(short, long)]
         wallet_path: String,
     },
-    RemoveSignature {
-        // Signature file to remove
-        #[arg(short, long)]
-        file: String,
-    },
-    ListSignatures,
-    ListFiles,
     Algorithms,
 }
 
