@@ -67,22 +67,16 @@ cargo run verify -n bob -f file_test_sig -w .wallet
 ```
 cargo run remove -n bob -w .wallet
 ```
-```
-cargo run remove-signature --file bob_file_test.txt.sig
-```
-```
-cargo run list-signatures  
-```
 
 ## Non quantum RSA Example signing + verify
 ```
-cargo run -- generate --n mallory -c 5 -w .wallet
+cargo run -- generate -n mallory -c 5 -w .wallet
 ```
 ```
-cargo run sign -n mallory -f files/file_test.txt -o ./signature_paths_directory/mallory_sig_path.json -w .wallet
+cargo run sign -n mallory -f files/file_test.txt -o mallory_sig_path -w .wallet
 ```
 ```
-cargo run verify -n mallory -f ./signature_paths_directory/mallory_sig_path.json -w .wallet
+cargo run verify -n mallory -f mallory_sig_path -w .wallet
 ```
 
 ## Testing Core Functionality
@@ -91,4 +85,4 @@ cargo test --test official_test -- --show-output
 ``` 
 
 ## Persistence
-- Persona data is stored in wallet directory in json format. 
+- Wallet data is stored in wallet file. By convention, this file is called .wallet
