@@ -69,13 +69,16 @@ cargo run remove -n alice -w .wallet
 
 ## Non quantum RSA Example signing + verify
 ```
-cargo run -- generate -n mallory -c 5 -w .wallet
+cargo run -- generate -n joe -c 5 -w .wallet
 ```
 ```
-cargo run sign -n mallory -f files/file_test.txt -o mallory_sig_path -w .wallet
+cargo run sign -n joe -f README.md -o joe_test_sig -w .wallet
 ```
 ```
-cargo run verify -n mallory -f mallory_sig_path -w .wallet
+cargo run verify -n joe -f joe_test_sig -w .wallet
+```
+```
+cargo run remove -n joe -w .wallet
 ```
 
 ## Testing Core Functionality

@@ -1,7 +1,7 @@
 use clap::Parser;
+use rust_cli::cipher_suite;
 use rust_cli::commands::{self, Args, Commands};
 use rust_cli::wallet::Wallet;
-use rust_cli::cipher_suite;
 
 fn main() {
     let args = Args::parse();
