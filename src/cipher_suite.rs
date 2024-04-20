@@ -3,17 +3,19 @@ use oqs::sig::{self, Algorithm, PublicKey, SecretKey, Sig};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256, Sha512};
 use std::{
-    fs::{self, File, OpenOptions},
+    // fs::{self, File, OpenOptions},
+    fs::{File, OpenOptions},
     io::{self, Read, Write},
 };
-use rsa::pkcs1::EncodeRsaPublicKey;
-use rsa::pkcs1v15::SigningKey;
-use rsa::sha2::Sha256 as rsa_sha2_Sha256;
-use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
-use rsa::RsaPublicKey;
-use rsa::{pkcs1v15::Signature, RsaPrivateKey};
 use serde;
 use crate::header::SignedData;
+// use rsa::pkcs1::EncodeRsaPublicKey;
+// use rsa::pkcs1v15::SigningKey;
+// use rsa::sha2::Sha256 as rsa_sha2_Sha256;
+// use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
+// use rsa::RsaPublicKey;
+// use rsa::{pkcs1v15::Signature, RsaPrivateKey};
+// use oqs::sig::SignatureRef;
 
 // An interface for a suite of cryptographic algorithms
 // Contains an id, a signature scheme, and a hash function
@@ -31,10 +33,10 @@ pub trait CipherSuite {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum CS {
     CS1(Dilithium2Sha256),
-    CS2(Dilithium2Sha512),
-    CS3(Falcon512Sha256),
-    CS4(Falcon512Sha512),
-    CS5(RsaSha256),
+    // CS2(Dilithium2Sha512),
+    // CS3(Falcon512Sha256),
+    // CS4(Falcon512Sha512),
+    // CS5(RsaSha256),
 }
 
 impl CS {
@@ -42,10 +44,10 @@ impl CS {
     pub fn to_box(self) -> Box<dyn CipherSuite> {
         match self {
             CS::CS1(cs) => Box::new(cs),
-            CS::CS2(cs) => Box::new(cs),
-            CS::CS3(cs) => Box::new(cs),
-            CS::CS4(cs) => Box::new(cs),
-            CS::CS5(cs) => Box::new(cs),
+            // CS::CS2(cs) => Box::new(cs),
+            // CS::CS3(cs) => Box::new(cs),
+            // CS::CS4(cs) => Box::new(cs),
+            // CS::CS5(cs) => Box::new(cs),
         }
     }
 }
@@ -56,10 +58,10 @@ pub fn create_ciphersuite(name: String, cs_id: usize) -> Result<CS, io::Error> {
 
     match cs_id {
         1 => Ok(CS::CS1(Dilithium2Sha256::new(lower_name.clone(), cs_id))),
-        2 => Ok(CS::CS2(Dilithium2Sha512::new(lower_name.clone(), cs_id))),
-        3 => Ok(CS::CS3(Falcon512Sha256::new(lower_name.clone(), cs_id))),
-        4 => Ok(CS::CS4(Falcon512Sha512::new(lower_name.clone(), cs_id))),
-        5 => Ok(CS::CS5(RsaSha256::new(lower_name.clone(), cs_id))),
+        // 2 => Ok(CS::CS2(Dilithium2Sha512::new(lower_name.clone(), cs_id))),
+        // 3 => Ok(CS::CS3(Falcon512Sha256::new(lower_name.clone(), cs_id))),
+        // 4 => Ok(CS::CS4(Falcon512Sha512::new(lower_name.clone(), cs_id))),
+        // 5 => Ok(CS::CS5(RsaSha256::new(lower_name.clone(), cs_id))),
         _ => Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "Unsupported cipher suite id. Enter a value between 1-5",
@@ -121,7 +123,7 @@ fn blake3_hash(buffer: &[u8]) -> Vec<u8> {
 
 //-----NEW QUANTUM SIGN-------
 pub fn quantum_sign(
-    file_name: Vec<u8>,
+    // file_name: Vec<u8>,
     cs_id: usize,
     contents: Vec<u8>,
     length: usize,
@@ -129,55 +131,99 @@ pub fn quantum_sign(
     sig_algo: Sig,
     pk_bytes: Vec<u8>,
     sk: &SecretKey,
-    cs: Box<dyn CipherSuite>
+    // cs: Box<dyn CipherSuite>
 ) -> io::Result<()> {
-    // Serialize the preliminary header (without signature)
-    let file_hash = cs.hash(&contents); // Use the dynamic hash function
-    let preliminary_header = Header::new(file_name.clone(), cs_id, length, file_hash.clone(), pk_bytes.clone(), vec![]);
-    let prelim_header_bytes = serde_json::to_vec(&preliminary_header)?;
+    // Determine which hash function to use based on cs_id
+    let file_hash = match cs_id {
+        1 => sha256_hash(&contents),
+        2 => sha512_hash(&contents),
+        3 => sha256_hash(&contents),
+        4 => sha512_hash(&contents),
+        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
+    };
 
-    // Hash the serialized preliminary header
-    let hashed_header = cs.hash(&prelim_header_bytes);
+    // create header
+    let header = Header {
+        cs_id,
+        file_type: 1,  // Assuming a default type
+        length,
+        file_hash: file_hash.clone(),
+        pk: pk_bytes,
+    };
+
+    // Serialize the header
+    let header_bytes = serde_json::to_vec(&header)?;
+
+    // Hash the serialized header
+    // let hashed_header = cs.hash(&header_bytes);
+    let hashed_header = match cs_id {
+        1 => sha256_hash(&header_bytes),
+        2 => sha512_hash(&header_bytes),
+        3 => blake3_hash(&header_bytes),
+        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
+    };
 
     // Sign the hash
     let signature = sig_algo.sign(&hashed_header, sk)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
-    
-    // Construct the complete header including the signature
-    let complete_header = Header::new(file_name, cs_id, length, file_hash, pk_bytes, signature.into_vec());
 
-    // Serialize the complete header
-    let header_str = serde_json::to_string_pretty(&complete_header)?;
+    // Create SignedData instance with the header, contents, and header's signature
+    let signed_data = SignedData {
+        header,
+        contents,
+        signature: signature.clone().into_vec(),  // Include the header's signature in SignedData
+    };
 
-    // Write serialized header to output file
+    // Serialize the SignedData
+    let signed_data_str = serde_json::to_string_pretty(&signed_data)?;
+
+    // Write serialized SignedData to output file
     let mut out_file = OpenOptions::new().write(true).create(true).open(output)?;
-    Write::write_all(&mut out_file, header_str.as_bytes())?;
+    Write::write_all(&mut out_file, signed_data_str.as_bytes())?;
 
     Ok(())
 }
 
-// Boilerplate for quantum verification
-fn quantum_verify(
-    header: Header,
-    pk_bytes: Vec<u8>,
-    hash: Vec<u8>,
-    sig_algo: Sig,
-) -> io::Result<()> {
-    // Verify sender, length of message, and hash of message
-    header.verify_sender(pk_bytes);
-    // header.verify_message_len();
-    header.verify_hash(&hash);
 
-    // Verify signature
-    let signature_bytes = header.get_signature();
-    let signature = sig_algo.signature_from_bytes(signature_bytes).unwrap();
-    let pk_bytes = header.get_signer();
-    let pk = sig_algo.public_key_from_bytes(pk_bytes).unwrap();
+pub fn quantum_verify(
+    input: &str,
+    sig_algo: Sig,
+    pk: &PublicKey
+) -> io::Result<()> {
+    // Open and read the serialized SignedData from the file
+    let mut file = File::open(input)?;
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents)?;
+
+    // Deserialize the SignedData
+    let signed_data: SignedData = serde_json::from_slice(&contents)?;
+
+    // Serialize the header part of the SignedData for hashing
+    let header_bytes = serde_json::to_vec(&signed_data.header)?;
+
+    // Re-hash the serialized header
+    // let hashed_header = cs.hash(&header_bytes);
+    let hashed_header = match signed_data.header.cs_id {
+        1 => sha256_hash(&header_bytes),
+        2 => sha512_hash(&header_bytes),
+        3 => blake3_hash(&header_bytes),
+        _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported cipher suite id")),
+    };
+
+    // Convert Vec<u8> to SignatureRef for verification
+    let signature_ref = sig_algo.signature_from_bytes(&signed_data.signature)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Failed to create signature reference"))?;
+
+    // Verify the signature using the provided public key and the hash
     sig_algo
-        .verify(&hash, signature, pk)
+        .verify(&hashed_header, signature_ref, pk)
         .expect("OQS error: Verification failed");
     Ok(())
 }
+
+
+
+
 
 // A ciphersuite that uses Dilithium2 signature scheme and sha-256 hashing
 // CS_ID: 1
@@ -226,7 +272,7 @@ impl CipherSuite for Dilithium2Sha256 {
         // Sign file
         quantum_sign(
             self.cs_id,
-            contents,
+            // contents,     //this might need to be fixed
             file_hash,
             length,
             output,
@@ -236,20 +282,40 @@ impl CipherSuite for Dilithium2Sha256 {
         )
     }
 
-    fn verify(&self, header: &str) -> io::Result<()> {
-        // Read header file
-        let header = fs::read_to_string(header)?;
-        let header: Header = serde_json::from_str(&header)?;
+    fn verify(&self, input: &str) -> io::Result<()> {
+        // Read the serialized SignedData from the file
+        let mut file = File::open(input)?;
+        let mut contents = Vec::new();
+        file.read_to_end(&mut contents)?;
 
-        // Re hash contents
-        let contents = header.get_contents();
-        let hash = self.hash(contents);
+        // Deserialize the SignedData
+        let signed_data: SignedData = serde_json::from_slice(&contents)?;
 
-        // Create sig object
+        // Serialize the header part of the SignedData for hashing
+        let header_bytes = serde_json::to_vec(&signed_data.header)?;
+
+        // Re-hash the serialized header
+        let hashed_header = self.hash(&header_bytes);
+
+        // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
+        // let signature_ref = SignatureRef::from(&signed_data.signature)
+            // .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Failed to create signature reference"))?;
+        let pk_bytes = self.get_pk_bytes();
 
-        // Verify header fields
-        quantum_verify(header, self.get_pk_bytes(), hash, sig_algo)
+        let signature_ref = sig_algo.signature_from_bytes(&signed_data.signature)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Failed to create signature reference"))?;
+
+
+        // Retrieve public key from stored bytes
+        // let pk = sig_algo.public_key_from_bytes(&self.get_pk_bytes())
+        //     .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Failed to create public key"))?;
+        let pk = sig_algo.public_key_from_bytes(&pk_bytes)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Failed to create public key"))?;
+
+        // Verify the signature using the provided public key and the hash
+        sig_algo.verify(&hashed_header, signature_ref, &pk)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e)))
     }
 
     fn get_name(&self) -> &String {
@@ -267,394 +333,438 @@ impl CipherSuite for Dilithium2Sha256 {
     fn to_enum(&self) -> CS {
         CS::CS1(self.clone())
     }
+
+
+
+
+
+    // fn verify(&self, header: &str) -> io::Result<()> {
+    //     // Read header file
+    //     let header = fs::read_to_string(header)?;
+    //     let header: Header = serde_json::from_str(&header)?;
+
+    //     // Re hash contents
+    //     let contents = header.get_contents();
+    //     let hash = self.hash(contents);
+
+    //     // Create sig object
+    //     let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
+
+    //     // Verify header fields
+    //     quantum_verify(header, self.get_pk_bytes(), hash, sig_algo)
+    // }
+
+    // fn get_name(&self) -> &String {
+    //     &self.name
+    // }
+
+    // fn get_pk_bytes(&self) -> Vec<u8> {
+    //     self.get_pk().into_vec()
+    // }
+
+    // fn get_cs_id(&self) -> usize {
+    //     self.cs_id
+    // }
+
+    // fn to_enum(&self) -> CS {
+    //     CS::CS1(self.clone())
+    // }
 }
 
-// A ciphersuite that uses Dilithium2 signature scheme and sha-512 hashing
-// CS_ID 2
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Dilithium2Sha512 {
-    name: String,
-    cs_id: usize,
-    pk: PublicKey,
-    sk: SecretKey,
-}
-
-impl Dilithium2Sha512 {
-    pub fn new(name: String, cs_id: usize) -> Self {
-        let sig_algo =
-            sig::Sig::new(sig::Algorithm::Dilithium2).expect("Failed to create sig object");
-        let (pk, sk) = sig_algo.keypair().expect("Failed to generate keypair");
-
-        Dilithium2Sha512 {
-            name,
-            cs_id,
-            pk,
-            sk,
-        }
-    }
-
-    pub fn get_pk(&self) -> PublicKey {
-        self.pk.clone()
-    }
-}
-
-impl CipherSuite for Dilithium2Sha512 {
-    fn hash(&self, buffer: &[u8]) -> Vec<u8> {
-        sha512_hash(buffer)
-    }
-
-    fn sign(&self, input: &str, output: &str) -> io::Result<()> {
-        // Read and hash the input file
-        let mut in_file = File::open(input)?;
-        let mut contents = Vec::new();
-        let length = in_file.read_to_end(&mut contents)?;
-        let file_hash: Vec<u8> = self.hash(&contents);
-
-        // Create sig object
-        let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Unable to create sig object");
-
-        // Sign file
-        quantum_sign(
-            self.cs_id,
-            contents,
-            file_hash,
-            length,
-            output,
-            sig_algo,
-            self.get_pk_bytes(),
-            &self.sk,
-        )
-    }
-
-    fn verify(&self, header: &str) -> io::Result<()> {
-        // Read header file
-        let header = fs::read_to_string(header)?;
-        let header: Header = serde_json::from_str(&header)?;
-
-        // Re hash contents
-        let contents = header.get_contents();
-        let hash = self.hash(contents);
-
-        // Create sig object
-        let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
-
-        // Verify header fields
-        quantum_verify(header, self.get_pk_bytes(), hash, sig_algo)
-    }
-
-    fn get_name(&self) -> &String {
-        &self.name
-    }
-
-    fn get_pk_bytes(&self) -> Vec<u8> {
-        self.get_pk().into_vec()
-    }
-
-    fn get_cs_id(&self) -> usize {
-        self.cs_id
-    }
-
-    fn to_enum(&self) -> CS {
-        CS::CS2(self.clone())
-    }
-}
-
-// A ciphersuite that uses Falcon512 signature scheme and sha-256 hashing
-// CS_ID: 3
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Falcon512Sha256 {
-    name: String,
-    cs_id: usize,
-    pk: PublicKey,
-    sk: SecretKey,
-}
-
-impl Falcon512Sha256 {
-    pub fn new(name: String, cs_id: usize) -> Self {
-        let sig_algo =
-            sig::Sig::new(sig::Algorithm::Falcon512).expect("Failed to create sig object");
-        let (pk, sk) = sig_algo.keypair().expect("Failed to generate keypair");
-
-        Falcon512Sha256 {
-            name,
-            cs_id,
-            pk,
-            sk,
-        }
-    }
-
-    pub fn get_pk(&self) -> PublicKey {
-        self.pk.clone()
-    }
-}
-
-impl CipherSuite for Falcon512Sha256 {
-    fn hash(&self, buffer: &[u8]) -> Vec<u8> {
-        sha256_hash(buffer)
-    }
-
-    fn sign(&self, input: &str, output: &str) -> io::Result<()> {
-        // Read and hash the input file
-        let mut in_file = File::open(input)?;
-        let mut contents = Vec::new();
-        let length = in_file.read_to_end(&mut contents)?;
-        let file_hash: Vec<u8> = self.hash(&contents);
-
-        // Create sig object
-        let sig_algo = Sig::new(Algorithm::Falcon512).expect("Unable to create sig object");
-
-        // Sign file
-        quantum_sign(
-            self.cs_id,
-            contents,
-            file_hash,
-            length,
-            output,
-            sig_algo,
-            self.get_pk_bytes(),
-            &self.sk,
-        )
-    }
-
-    fn verify(&self, header: &str) -> io::Result<()> {
-        // Read header file
-        let header = fs::read_to_string(header)?;
-        let header: Header = serde_json::from_str(&header)?;
-
-        // Re hash contents
-        let contents = header.get_contents();
-        let hash = self.hash(contents);
-
-        // Create sig object
-        let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
-
-        // Verify header fields
-        quantum_verify(header, self.get_pk_bytes(), hash, sig_algo)
-    }
-
-    fn get_name(&self) -> &String {
-        &self.name
-    }
-
-    fn get_pk_bytes(&self) -> Vec<u8> {
-        self.get_pk().into_vec()
-    }
-
-    fn get_cs_id(&self) -> usize {
-        self.cs_id
-    }
-
-    fn to_enum(&self) -> CS {
-        CS::CS3(self.clone())
-    }
-}
-
-// A ciphersuite that uses Falcon512 signature scheme and sha-512 hashing
-// CS_ID: 4
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Falcon512Sha512 {
-    name: String,
-    cs_id: usize,
-    pk: PublicKey,
-    sk: SecretKey,
-}
-
-impl Falcon512Sha512 {
-    pub fn new(name: String, cs_id: usize) -> Self {
-        let sig_algo =
-            sig::Sig::new(sig::Algorithm::Falcon512).expect("Failed to create sig object");
-        let (pk, sk) = sig_algo.keypair().expect("Failed to generate keypair");
-
-        Falcon512Sha512 {
-            name,
-            cs_id,
-            pk,
-            sk,
-        }
-    }
-
-    pub fn get_pk(&self) -> PublicKey {
-        self.pk.clone()
-    }
-}
-
-impl CipherSuite for Falcon512Sha512 {
-    fn hash(&self, buffer: &[u8]) -> Vec<u8> {
-        sha512_hash(buffer)
-    }
-
-    fn sign(&self, input: &str, output: &str) -> io::Result<()> {
-        // Read and hash the input file
-        let mut in_file = File::open(input)?;
-        let mut contents = Vec::new();
-        let length = in_file.read_to_end(&mut contents)?;
-        let file_hash: Vec<u8> = self.hash(&contents);
-
-        // Create sig object
-        let sig_algo = Sig::new(Algorithm::Falcon512).expect("Unable to create sig object");
-
-        // Sign file
-        quantum_sign(
-            self.cs_id,
-            contents,
-            file_hash,
-            length,
-            output,
-            sig_algo,
-            self.get_pk_bytes(),
-            &self.sk,
-        )
-    }
-
-    fn verify(&self, header: &str) -> io::Result<()> {
-        // Read header file
-        let header = fs::read_to_string(header)?;
-        let header: Header = serde_json::from_str(&header)?;
-
-        // Re hash contents
-        let contents = header.get_contents();
-        let hash = self.hash(contents);
-
-        // Create sig object
-        let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
-
-        // Verify header fields
-        quantum_verify(header, self.get_pk_bytes(), hash, sig_algo)
-    }
-
-    fn get_name(&self) -> &String {
-        &self.name
-    }
-
-    fn get_pk_bytes(&self) -> Vec<u8> {
-        self.get_pk().into_vec()
-    }
-
-    fn get_cs_id(&self) -> usize {
-        self.cs_id
-    }
-
-    fn to_enum(&self) -> CS {
-        CS::CS4(self.clone())
-    }
-}
-
-// A ciphersuite that uses RSA PKCS signature scheme and sha-256 hashing
-// CS_ID: 5
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct RsaSha256 {
-    name: String,
-    cs_id: usize,
-    sk: RsaPrivateKey,
-    pk: RsaPublicKey,
-}
-
-impl RsaSha256 {
-    pub fn new(name: String, cs_id: usize) -> Self {
-        let mut rng = rand::thread_rng();
-        let bits = 2048;
-        let sk = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
-        let pk = RsaPublicKey::from(&sk);
-
-        RsaSha256 {
-            name,
-            cs_id,
-            sk,
-            pk,
-        }
-    }
-
-    pub fn get_pk(&self) -> RsaPublicKey {
-        self.pk.clone()
-    }
-}
-
-impl CipherSuite for RsaSha256 {
-    fn hash(&self, buffer: &[u8]) -> Vec<u8> {
-        sha256_hash(buffer)
-    }
-
-    fn sign(&self, input: &str, output: &str) -> io::Result<()> {
-        // Read and hash the input file
-        let mut in_file = File::open(input)?;
-        let mut contents = Vec::new();
-        let length = in_file.read_to_end(&mut contents)?;
-        let file_hash: Vec<u8> = self.hash(&contents);
-
-        // Create sig object
-        let mut rng = rand::thread_rng();
-        let signing_key = SigningKey::<rsa_sha2_Sha256>::new(self.sk.clone());
-        let signature = signing_key.sign_with_rng(&mut rng, &contents);
-        let signature = signature.to_vec();
-
-        let header = Header::new(
-            self.cs_id,
-            file_hash,
-            self.pk
-                .to_pkcs1_der()
-                .expect("Failed to serialize public key")
-                .to_vec(),
-            signature,
-            length,
-            contents,
-        );
-        let header_str = serde_json::to_string_pretty(&header)?;
-
-        let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
-        Write::write_all(&mut out_file, header_str.as_bytes())?;
-
-        Ok(())
-    }
-
-    fn verify(&self, header: &str) -> io::Result<()> {
-        let header = fs::read_to_string(header)?;
-        let header: Header = serde_json::from_str(&header)?;
-
-        // Re hash contents
-        let contents = header.get_contents();
-        let hash = self.hash(contents);
-
-        // key for signing based off of private key
-        let signing_key = SigningKey::<rsa_sha2_Sha256>::new(self.sk.clone());
-
-        // Verify sender, length of message, and hash of message
-        header.verify_sender(
-            self.pk
-                .to_pkcs1_der()
-                .expect("Failed to serialize public key")
-                .to_vec(),
-        );
-        header.verify_message_len();
-        header.verify_hash(&hash);
-
-        // Verify signature
-        let signature_bytes = header.get_signature();
-        let signature = Signature::try_from(signature_bytes.as_slice())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
-
-        let verifying_key = signing_key.verifying_key();
-        verifying_key
-            .verify(contents, &signature)
-            .expect("failed to verify");
-        Ok(())
-    }
-
-    fn get_name(&self) -> &String {
-        &self.name
-    }
-
-    fn get_pk_bytes(&self) -> Vec<u8> {
-        self.get_pk()
-            .to_pkcs1_der()
-            .expect("Failed to serialize public key")
-            .to_vec()
-    }
-
-    fn get_cs_id(&self) -> usize {
-        self.cs_id
-    }
-
-    fn to_enum(&self) -> CS {
-        CS::CS5(self.clone())
-    }
-}
+
+
+
+
+//-----------JUST FOR FIRST CS ID, UNCOMMENT REST ONCE WORKING-------------
+
+
+
+// // A ciphersuite that uses Dilithium2 signature scheme and sha-512 hashing
+// // CS_ID 2
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// pub struct Dilithium2Sha512 {
+//     name: String,
+//     cs_id: usize,
+//     pk: PublicKey,
+//     sk: SecretKey,
+// }
+
+// impl Dilithium2Sha512 {
+//     pub fn new(name: String, cs_id: usize) -> Self {
+//         let sig_algo =
+//             sig::Sig::new(sig::Algorithm::Dilithium2).expect("Failed to create sig object");
+//         let (pk, sk) = sig_algo.keypair().expect("Failed to generate keypair");
+
+//         Dilithium2Sha512 {
+//             name,
+//             cs_id,
+//             pk,
+//             sk,
+//         }
+//     }
+
+//     pub fn get_pk(&self) -> PublicKey {
+//         self.pk.clone()
+//     }
+// }
+
+// impl CipherSuite for Dilithium2Sha512 {
+//     fn hash(&self, buffer: &[u8]) -> Vec<u8> {
+//         sha512_hash(buffer)
+//     }
+
+//     fn sign(&self, input: &str, output: &str) -> io::Result<()> {
+//         // Read and hash the input file
+//         let mut in_file = File::open(input)?;
+//         let mut contents = Vec::new();
+//         let length = in_file.read_to_end(&mut contents)?;
+//         let file_hash: Vec<u8> = self.hash(&contents);
+
+//         // Create sig object
+//         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Unable to create sig object");
+
+//         // Sign file
+//         quantum_sign(
+//             self.cs_id,
+//             contents,
+//             file_hash,
+//             length,
+//             output,
+//             sig_algo,
+//             self.get_pk_bytes(),
+//             &self.sk,
+//         )
+//     }
+
+//     fn verify(&self, header: &str) -> io::Result<()> {
+//         // Read header file
+//         let header = fs::read_to_string(header)?;
+//         let header: Header = serde_json::from_str(&header)?;
+
+//         // Re hash contents
+//         let contents = header.get_contents();
+//         let hash = self.hash(contents);
+
+//         // Create sig object
+//         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
+
+//         // Verify header fields
+//         quantum_verify(header, self.get_pk_bytes(), hash, sig_algo)
+//     }
+
+//     fn get_name(&self) -> &String {
+//         &self.name
+//     }
+
+//     fn get_pk_bytes(&self) -> Vec<u8> {
+//         self.get_pk().into_vec()
+//     }
+
+//     fn get_cs_id(&self) -> usize {
+//         self.cs_id
+//     }
+
+//     fn to_enum(&self) -> CS {
+//         CS::CS2(self.clone())
+//     }
+// }
+
+// // A ciphersuite that uses Falcon512 signature scheme and sha-256 hashing
+// // CS_ID: 3
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// pub struct Falcon512Sha256 {
+//     name: String,
+//     cs_id: usize,
+//     pk: PublicKey,
+//     sk: SecretKey,
+// }
+
+// impl Falcon512Sha256 {
+//     pub fn new(name: String, cs_id: usize) -> Self {
+//         let sig_algo =
+//             sig::Sig::new(sig::Algorithm::Falcon512).expect("Failed to create sig object");
+//         let (pk, sk) = sig_algo.keypair().expect("Failed to generate keypair");
+
+//         Falcon512Sha256 {
+//             name,
+//             cs_id,
+//             pk,
+//             sk,
+//         }
+//     }
+
+//     pub fn get_pk(&self) -> PublicKey {
+//         self.pk.clone()
+//     }
+// }
+
+// impl CipherSuite for Falcon512Sha256 {
+//     fn hash(&self, buffer: &[u8]) -> Vec<u8> {
+//         sha256_hash(buffer)
+//     }
+
+//     fn sign(&self, input: &str, output: &str) -> io::Result<()> {
+//         // Read and hash the input file
+//         let mut in_file = File::open(input)?;
+//         let mut contents = Vec::new();
+//         let length = in_file.read_to_end(&mut contents)?;
+//         let file_hash: Vec<u8> = self.hash(&contents);
+
+//         // Create sig object
+//         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Unable to create sig object");
+
+//         // Sign file
+//         quantum_sign(
+//             self.cs_id,
+//             contents,
+//             file_hash,
+//             length,
+//             output,
+//             sig_algo,
+//             self.get_pk_bytes(),
+//             &self.sk,
+//         )
+//     }
+
+//     fn verify(&self, header: &str) -> io::Result<()> {
+//         // Read header file
+//         let header = fs::read_to_string(header)?;
+//         let header: Header = serde_json::from_str(&header)?;
+
+//         // Re hash contents
+//         let contents = header.get_contents();
+//         let hash = self.hash(contents);
+
+//         // Create sig object
+//         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
+
+//         // Verify header fields
+//         quantum_verify(header, self.get_pk_bytes(), hash, sig_algo)
+//     }
+
+//     fn get_name(&self) -> &String {
+//         &self.name
+//     }
+
+//     fn get_pk_bytes(&self) -> Vec<u8> {
+//         self.get_pk().into_vec()
+//     }
+
+//     fn get_cs_id(&self) -> usize {
+//         self.cs_id
+//     }
+
+//     fn to_enum(&self) -> CS {
+//         CS::CS3(self.clone())
+//     }
+// }
+
+// // A ciphersuite that uses Falcon512 signature scheme and sha-512 hashing
+// // CS_ID: 4
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// pub struct Falcon512Sha512 {
+//     name: String,
+//     cs_id: usize,
+//     pk: PublicKey,
+//     sk: SecretKey,
+// }
+
+// impl Falcon512Sha512 {
+//     pub fn new(name: String, cs_id: usize) -> Self {
+//         let sig_algo =
+//             sig::Sig::new(sig::Algorithm::Falcon512).expect("Failed to create sig object");
+//         let (pk, sk) = sig_algo.keypair().expect("Failed to generate keypair");
+
+//         Falcon512Sha512 {
+//             name,
+//             cs_id,
+//             pk,
+//             sk,
+//         }
+//     }
+
+//     pub fn get_pk(&self) -> PublicKey {
+//         self.pk.clone()
+//     }
+// }
+
+// impl CipherSuite for Falcon512Sha512 {
+//     fn hash(&self, buffer: &[u8]) -> Vec<u8> {
+//         sha512_hash(buffer)
+//     }
+
+//     fn sign(&self, input: &str, output: &str) -> io::Result<()> {
+//         // Read and hash the input file
+//         let mut in_file = File::open(input)?;
+//         let mut contents = Vec::new();
+//         let length = in_file.read_to_end(&mut contents)?;
+//         let file_hash: Vec<u8> = self.hash(&contents);
+
+//         // Create sig object
+//         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Unable to create sig object");
+
+//         // Sign file
+//         quantum_sign(
+//             self.cs_id,
+//             contents,
+//             file_hash,
+//             length,
+//             output,
+//             sig_algo,
+//             self.get_pk_bytes(),
+//             &self.sk,
+//         )
+//     }
+
+//     fn verify(&self, header: &str) -> io::Result<()> {
+//         // Read header file
+//         let header = fs::read_to_string(header)?;
+//         let header: Header = serde_json::from_str(&header)?;
+
+//         // Re hash contents
+//         let contents = header.get_contents();
+//         let hash = self.hash(contents);
+
+//         // Create sig object
+//         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
+
+//         // Verify header fields
+//         quantum_verify(header, self.get_pk_bytes(), hash, sig_algo)
+//     }
+
+//     fn get_name(&self) -> &String {
+//         &self.name
+//     }
+
+//     fn get_pk_bytes(&self) -> Vec<u8> {
+//         self.get_pk().into_vec()
+//     }
+
+//     fn get_cs_id(&self) -> usize {
+//         self.cs_id
+//     }
+
+//     fn to_enum(&self) -> CS {
+//         CS::CS4(self.clone())
+//     }
+// }
+
+// // A ciphersuite that uses RSA PKCS signature scheme and sha-256 hashing
+// // CS_ID: 5
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// pub struct RsaSha256 {
+//     name: String,
+//     cs_id: usize,
+//     sk: RsaPrivateKey,
+//     pk: RsaPublicKey,
+// }
+
+// impl RsaSha256 {
+//     pub fn new(name: String, cs_id: usize) -> Self {
+//         let mut rng = rand::thread_rng();
+//         let bits = 2048;
+//         let sk = RsaPrivateKey::new(&mut rng, bits).expect("failed to generate a key");
+//         let pk = RsaPublicKey::from(&sk);
+
+//         RsaSha256 {
+//             name,
+//             cs_id,
+//             sk,
+//             pk,
+//         }
+//     }
+
+//     pub fn get_pk(&self) -> RsaPublicKey {
+//         self.pk.clone()
+//     }
+// }
+
+// impl CipherSuite for RsaSha256 {
+//     fn hash(&self, buffer: &[u8]) -> Vec<u8> {
+//         sha256_hash(buffer)
+//     }
+
+//     fn sign(&self, input: &str, output: &str) -> io::Result<()> {
+//         // Read and hash the input file
+//         let mut in_file = File::open(input)?;
+//         let mut contents = Vec::new();
+//         let length = in_file.read_to_end(&mut contents)?;
+//         let file_hash: Vec<u8> = self.hash(&contents);
+
+//         // Create sig object
+//         let mut rng = rand::thread_rng();
+//         let signing_key = SigningKey::<rsa_sha2_Sha256>::new(self.sk.clone());
+//         let signature = signing_key.sign_with_rng(&mut rng, &contents);
+//         let signature = signature.to_vec();
+
+//         let header = Header::new(
+//             self.cs_id,
+//             file_hash,
+//             self.pk
+//                 .to_pkcs1_der()
+//                 .expect("Failed to serialize public key")
+//                 .to_vec(),
+//             signature,
+//             length,
+//             contents,
+//         );
+//         let header_str = serde_json::to_string_pretty(&header)?;
+
+//         let mut out_file = OpenOptions::new().append(true).create(true).open(output)?;
+//         Write::write_all(&mut out_file, header_str.as_bytes())?;
+
+//         Ok(())
+//     }
+
+//     fn verify(&self, header: &str) -> io::Result<()> {
+//         let header = fs::read_to_string(header)?;
+//         let header: Header = serde_json::from_str(&header)?;
+
+//         // Re hash contents
+//         let contents = header.get_contents();
+//         let hash = self.hash(contents);
+
+//         // key for signing based off of private key
+//         let signing_key = SigningKey::<rsa_sha2_Sha256>::new(self.sk.clone());
+
+//         // Verify sender, length of message, and hash of message
+//         header.verify_sender(
+//             self.pk
+//                 .to_pkcs1_der()
+//                 .expect("Failed to serialize public key")
+//                 .to_vec(),
+//         );
+//         header.verify_message_len();
+//         header.verify_hash(&hash);
+
+//         // Verify signature
+//         let signature_bytes = header.get_signature();
+//         let signature = Signature::try_from(signature_bytes.as_slice())
+//             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+
+//         let verifying_key = signing_key.verifying_key();
+//         verifying_key
+//             .verify(contents, &signature)
+//             .expect("failed to verify");
+//         Ok(())
+//     }
+
+//     fn get_name(&self) -> &String {
+//         &self.name
+//     }
+
+//     fn get_pk_bytes(&self) -> Vec<u8> {
+//         self.get_pk()
+//             .to_pkcs1_der()
+//             .expect("Failed to serialize public key")
+//             .to_vec()
+//     }
+
+//     fn get_cs_id(&self) -> usize {
+//         self.cs_id
+//     }
+
+//     fn to_enum(&self) -> CS {
+//         CS::CS5(self.clone())
+//     }
+// }

@@ -3,34 +3,30 @@ use serde::{Deserialize, Serialize};
 // A struct to store information about a file and its signature
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Header {
-    file_name: Vec<u8>,
-    cs_id: usize,
-    file_type: usize,
-    length: usize,
-    file_hash: Vec<u8>,
-    pk: Vec<u8>,
-    signature: Vec<u8>,
+    // pub file_name: Vec<u8>,
+    pub cs_id: usize,
+    pub file_type: usize,
+    pub length: usize,
+    pub file_hash: Vec<u8>,
+    pub pk: Vec<u8>,
 }
 
 impl Header {
     // Constructs a header with the given information
     pub fn new(
-        file_name: Vec<u8>,
+        // file_name: Vec<u8>,
         cs_id: usize,
-        // file_type: usize,
         length: usize,
         file_hash: Vec<u8>,
         pk: Vec<u8>,
-        signature: Vec<u8>,
     ) -> Self {
         Header {
-            file_name,
+            // file_name,
             cs_id,
             file_type: 1,
             length,
             file_hash,
             pk, 
-            signature,
         }
     }
 
@@ -66,32 +62,33 @@ impl Header {
         &self.pk
     }
 
-    // Getter method for signature
-    pub fn get_signature(&self) -> &Vec<u8> {
-        &self.signature
-    }
+    // // Getter method for signature
+    // pub fn get_signature(&self) -> &Vec<u8> {
+    //     &self.signature
+    // }
+
 }
 
 
 // A struct to store information about a file and its signature
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SignedData {
-    header: Header,
-    // signature: Vec<u8>,
-    contents: Vec<u8>,
+    pub header: Header,
+    pub contents: Vec<u8>,
+    pub signature: Vec<u8>,
 }
 
 impl SignedData {
     // Constructs a header with the given information
     pub fn new(
         header: Header,
-        signature: Vec<u8>,
         contents: Vec<u8>,
+        signature: Vec<u8>,
     ) -> Self {
         SignedData {
             header,
-            // signature,
             contents,
+            signature,
         }
     }
 
@@ -100,10 +97,10 @@ impl SignedData {
         &self.contents
     }
 
-    // // Getter method for signature
-    // pub fn get_signature(&self) -> &Vec<u8> {
-    //     &self.signature
-    // }
+    // Getter method for signature
+    pub fn get_signature(&self) -> &Vec<u8> {
+        &self.signature
+    }
 }
 
 // Helper function to check if two vectors are equal
