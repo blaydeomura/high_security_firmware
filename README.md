@@ -13,7 +13,7 @@
 
 
 ## Usage
-The program uses the Clap library for parsing command-line arguments. The available options are as follows:
+The program uses the Clap library for parsing command-line arguments. All subcommands support both long and short versions. The available options are as follows:
 
 * View combination of algorithms in each cipher suite
 ```
@@ -22,54 +22,53 @@ cargo run -- algorithms
 
 * Generate a new ciphersuite with the specified algorithms
 ```
-cargo run -- generate --name <name> --cs-id <id>
+cargo run -- generate --name <name> --cs-id <id> --wallet <path to wallet>
 ```
 
 * Sign a file using the specified persona
-    * Header file must be a json file
 ```
-cargo run -- sign --name <name of signer> --file <file to sign> --output <header file>
+cargo run -- sign --name <name of signer> --file <file to sign> --output <signed data file> --wallet <path to wallet>
 ```
 
 * Verify a file based on signer and header file
 ```
-cargo run -- verify --name <name of signer> --header <header file>
+cargo run -- verify --name <name of signer> --file <signed data file> --wallet <path to wallet>
 ```
 
 * Remove a persona from wallet
 ```
-cargo run -- remove --name <name>
-```
-
-* Remove signature file
-```
-cargo run -- remove-signature --file <path to signature file>
-```
-
-* List signature files
-```
-cargo run -- list-signatures
-```
-* List of files to sing
-```
-cargo run -- list-files
+cargo run -- remove --name <name> --wallet <path to wallet>
 ```
 
 ## Quantum Example
-* cargo run -- generate --name bob --cs-id 1
-* cargo run sign --name bob --file files/file_test.txt --output ./signature_paths_directory/bob_sig_path.json
-* cargo run verify --name bob --header ./signature_paths_directory/bob_sig_path.json
-* cargo run remove-signature --file bob_file_test.txt.sig
-* cargo run remove --name bob
-* cargo run list-signatures  
+```
+cargo run -- generate -n bob -c 1 -w .wallet
+```
+```
+cargo run sign -n bob -f files/file_test.txt -o file_test_sig -w .wallet
+```
+```
+cargo run verify -n bob -f file_test_sig -w .wallet
+```
+```
+cargo run remove -n bob -w .wallet
+```
 
 ## Non quantum RSA Example signing + verify
-* cargo run -- generate --name mallory --cs-id 5 //good
-* cargo run sign --name mallory --file files/file_test.txt --output ./signature_paths_directory/mallory_sig_path.json
-* cargo run verify --name mallory --header ./signature_paths_directory/mallory_sig_path.json
+```
+cargo run -- generate -n mallory -c 5 -w .wallet
+```
+```
+cargo run sign -n mallory -f files/file_test.txt -o mallory_sig_path -w .wallet
+```
+```
+cargo run verify -n mallory -f mallory_sig_path -w .wallet
+```
 
-## Testing Core Functionality 
-    1. cargo test --test official_test -- --show-output  
+## Testing Core Functionality
+```
+cargo test --test official_test -- --show-output  
+``` 
 
 ## Persistence
-- Persona data is stored in wallet directory in json format. 
+- Wallet data is stored in wallet file. By convention, this file is called .wallet
