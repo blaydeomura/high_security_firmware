@@ -44,20 +44,27 @@ cargo run -- remove --name <name> --wallet <path to wallet>
 ```
 cargo run -- generate -n bob -c 1 -w .wallet
 cargo run -- generate -n mallory -c 2 -w .wallet
+cargo run -- generate -n dude -c 3 -w .wallet
+
 
 ```
 ```
 cargo run sign -n bob -f README.md -o bob_test_sig -w .wallet
 cargo run sign -n mallory -f README.md -o mallory_test_sig -w .wallet
+cargo run sign -n dude -f README.md -o dude_test_sig -w .wallet
 
 ```
 ```
 cargo run verify -n bob -f bob_test_sig -w .wallet
 cargo run verify -n mallory -f mallory_test_sig -w .wallet
+cargo run verify -n dude -f dude_test_sig -w .wallet
+
 ```
 ```
 cargo run remove -n bob -w .wallet
 cargo run remove -n mallory -w .wallet
+cargo run remove -n dude -w .wallet
+
 
 ```
 ```
