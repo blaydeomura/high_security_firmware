@@ -88,6 +88,18 @@ fn sha512_hash(buffer: &[u8]) -> Vec<u8> {
 //     hasher.finalize().to_vec()
 // }
 
+// Hashes input data based on the specified cipher suite ID.
+fn hash_based_on_cs_id(cs_id: usize, data: &[u8]) -> io::Result<Vec<u8>> {
+    match cs_id {
+        1 | 3 | 5 => Ok(sha256_hash(data)),
+        2 | 4 => Ok(sha512_hash(data)),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Unsupported cipher suite id",
+        )),
+    }
+}
+
 pub fn quantum_sign(
     cs_id: usize,
     contents: Vec<u8>,
@@ -97,49 +109,28 @@ pub fn quantum_sign(
     pk_bytes: Vec<u8>,
     sk: &SecretKey,
 ) -> io::Result<()> {
+
     // Determine which hash function to use based on cs_id
-    let file_hash = match cs_id {
-        1 => sha256_hash(&contents),
-        2 => sha512_hash(&contents),
-        3 => sha256_hash(&contents),
-        4 => sha512_hash(&contents),
-        _ => {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Unsupported cipher suite id",
-            ))
-        }
-    };
+    let file_hash = hash_based_on_cs_id(cs_id, &contents);
 
     // create header
     let header = Header {
         cs_id,
         file_type: 1, // Assuming a default type
         length,
-        file_hash: file_hash.clone(),
+        file_hash: file_hash?,
         pk: pk_bytes,
     };
 
     // Serialize the header
     let header_bytes = serde_json::to_vec(&header)?;
 
-    // Hash the serialized header
-    let hashed_header = match cs_id {
-        1 => sha256_hash(&header_bytes),
-        2 => sha512_hash(&header_bytes),
-        3 => sha256_hash(&header_bytes),
-        4 => sha512_hash(&header_bytes),
-        _ => {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Unsupported cipher suite id",
-            ))
-        }
-    };
+    // Hash the header bytes
+    let hashed_header = hash_based_on_cs_id(cs_id, &header_bytes);
 
     // Sign the hash
     let signature = sig_algo
-        .sign(&hashed_header, sk)
+        .sign(&hashed_header?, sk)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 
     // Create SignedData instance with the header, contents, and header's signature
