@@ -44,6 +44,21 @@ impl Header {
     pub fn get_signer(&self) -> &Vec<u8> {
         &self.pk
     }
+
+    // Getter method for length
+    pub fn get_length(&self) -> usize {
+        self.length
+    }
+
+    // Getter method for hash
+    pub fn get_hash(&self) -> &Vec<u8> {
+        &self.file_hash
+    }
+
+    // Getter method for hash
+    pub fn get_pk_bytes(&self) -> &Vec<u8> {
+        &self.pk
+    }
 }
 
 // A struct to store information about a file and its signature
@@ -62,6 +77,15 @@ impl SignedData {
             contents,
             signature,
         }
+    }
+
+    // Checks if length field matches actaul length of message
+    pub fn verify_message_len(&self) {
+        assert_eq!(
+            self.header.length,
+            self.contents.len(),
+            "Verification failed: invalid message length"
+        );
     }
 
     // Getter method for content

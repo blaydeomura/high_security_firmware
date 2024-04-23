@@ -139,7 +139,19 @@ pub fn quantum_sign(
     Ok(())
 }
 
-pub fn quantum_verify(input: &str, sig_algo: Sig, pk: &PublicKey, cs_id: usize) -> io::Result<()> {
+pub fn quantum_verify(
+    header: Header,
+    input: &str,
+    sig_algo: Sig,
+    pk: &PublicKey,
+    cs_id: usize,
+) -> io::Result<()> {
+    // Verify sender, length of message, and hash of message
+    header.verify_sender(pk.clone().into_vec());
+
+    // Verify hash of message
+    header.verify_hash(&header.get_hash());
+
     // Open and read the serialized SignedData from the file
     let mut file = File::open(input)?;
     let mut contents = Vec::new();
@@ -147,6 +159,9 @@ pub fn quantum_verify(input: &str, sig_algo: Sig, pk: &PublicKey, cs_id: usize) 
 
     // Deserialize the SignedData
     let signed_data: SignedData = serde_json::from_slice(&contents)?;
+
+    // Verify message len
+    signed_data.verify_message_len();
 
     // Serialize the header part of the SignedData for hashing
     let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
@@ -703,12 +718,6 @@ impl CipherSuite for RsaSha256 {
         let signature = signing_key.sign_with_rng(&mut rng, &hashed_header);
         let signature = signature.to_vec();
 
-        // Create SignedData instance with the header, contents, and header's signature
-        // let signed_data = SignedData {
-        //     header,
-        //     contents,
-        //     signature,
-        // };
         let signed_data = SignedData::new(header, contents, signature);
 
         // Serialize the SignedData
@@ -722,6 +731,7 @@ impl CipherSuite for RsaSha256 {
     }
 
     fn verify(&self, input: &str) -> io::Result<()> {
+        // fn verify(&self, input: &str) -> io::Result<()> {
         // Open the signed data file and read contents
         let mut file = File::open(input)?;
         let mut contents = Vec::new();
@@ -730,8 +740,21 @@ impl CipherSuite for RsaSha256 {
         // Deserialize the SignedData
         let signed_data: SignedData = serde_json::from_slice(&contents)?;
 
+        // Verify message len
+        signed_data.verify_message_len();
+
         // Serialize the header to bytes
         let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
+
+        // Verify hash of message
+        signed_data
+            .get_header()
+            .verify_hash(&signed_data.get_header().get_hash());
+
+        // Verify sender
+        signed_data
+            .get_header()
+            .verify_sender(signed_data.get_header().get_pk_bytes().to_vec());
 
         // Re-hash the serialized header
         let hashed_header = self.hash(&header_bytes);
