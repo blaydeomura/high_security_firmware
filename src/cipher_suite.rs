@@ -103,14 +103,13 @@ fn hash_based_on_cs_id(cs_id: usize, data: &[u8]) -> io::Result<Vec<u8>> {
 pub fn quantum_sign(
     cs_id: usize,
     contents: Vec<u8>,
-    file_hash: Vec<u8>,
+    _file_hash: Vec<u8>,
     length: usize,
     output: &str,
     sig_algo: Sig,
     pk_bytes: Vec<u8>,
     sk: &SecretKey,
 ) -> io::Result<()> {
-
     // Determine which hash function to use based on cs_id
     let file_hash = hash_based_on_cs_id(cs_id, &contents);
 
@@ -128,16 +127,7 @@ pub fn quantum_sign(
         .sign(&hashed_header?, sk)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 
-    
-
-    // Create SignedData instance with the header, contents, and header's signature
-    // let signed_data = SignedData {
-    //     header,
-    //     contents,
-    //     signature: signature.clone().into_vec(), // Include the header's signature in SignedData
-    // };
     let signed_data = SignedData::new(header, contents, signature.clone().into_vec());
-
 
     // Serialize the SignedData
     let signed_data_str = serde_json::to_string_pretty(&signed_data)?;
@@ -170,7 +160,6 @@ pub fn quantum_verify(input: &str, sig_algo: Sig, pk: &PublicKey, cs_id: usize) 
         Err(e) => return Err(e),
     };
 
-
     // Convert Vec<u8> to SignatureRef for verification
     let signature_ref = sig_algo
         .signature_from_bytes(&signed_data.get_signature())
@@ -182,9 +171,14 @@ pub fn quantum_verify(input: &str, sig_algo: Sig, pk: &PublicKey, cs_id: usize) 
         })?;
 
     // Verify the signature using the provided public key and the hash
-    sig_algo.verify(&hashed_header, signature_ref, pk)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("OQS error: Verification failed - {}", e)))?;
-
+    sig_algo
+        .verify(&hashed_header, signature_ref, pk)
+        .map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                format!("OQS error: Verification failed - {}", e),
+            )
+        })?;
 
     Ok(())
 }
@@ -716,7 +710,6 @@ impl CipherSuite for RsaSha256 {
         //     signature,
         // };
         let signed_data = SignedData::new(header, contents, signature);
-
 
         // Serialize the SignedData
         let signed_data_str = serde_json::to_string_pretty(&signed_data)?;
