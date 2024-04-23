@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 // A struct to store information about a file and its signature
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Header {
-    pub cs_id: usize,
-    pub file_type: usize,
-    pub length: usize,
-    pub file_hash: Vec<u8>,
-    pub pk: Vec<u8>,
+    cs_id: usize,
+    file_type: usize,
+    length: usize,
+    file_hash: Vec<u8>,
+    pk: Vec<u8>,
 }
 
 impl Header {
@@ -49,9 +49,9 @@ impl Header {
 // A struct to store information about a file and its signature
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SignedData {
-    pub header: Header,
-    pub contents: Vec<u8>,
-    pub signature: Vec<u8>,
+    header: Header,
+    contents: Vec<u8>,
+    signature: Vec<u8>,
 }
 
 impl SignedData {
@@ -73,6 +73,16 @@ impl SignedData {
     pub fn get_signature(&self) -> &Vec<u8> {
         &self.signature
     }
+
+    // Getter for header
+    pub fn get_header(&self) -> &Header {
+        &self.header
+    }
+
+    // // Getter for cs id
+    // pub fn get_cs_id(&self) -> &usize{
+    //     &self.header.get_cs_id()
+    // }
 }
 
 // Helper function to check if two vectors are equal

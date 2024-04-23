@@ -103,6 +103,7 @@ fn hash_based_on_cs_id(cs_id: usize, data: &[u8]) -> io::Result<Vec<u8>> {
 pub fn quantum_sign(
     cs_id: usize,
     contents: Vec<u8>,
+    file_hash: Vec<u8>,
     length: usize,
     output: &str,
     sig_algo: Sig,
@@ -113,14 +114,8 @@ pub fn quantum_sign(
     // Determine which hash function to use based on cs_id
     let file_hash = hash_based_on_cs_id(cs_id, &contents);
 
-    // create header
-    let header = Header {
-        cs_id,
-        file_type: 1, // Assuming a default type
-        length,
-        file_hash: file_hash?,
-        pk: pk_bytes,
-    };
+    // Create header
+    let header = Header::new(cs_id, length, file_hash?, pk_bytes);
 
     // Serialize the header
     let header_bytes = serde_json::to_vec(&header)?;
@@ -133,12 +128,16 @@ pub fn quantum_sign(
         .sign(&hashed_header?, sk)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 
+    
+
     // Create SignedData instance with the header, contents, and header's signature
-    let signed_data = SignedData {
-        header,
-        contents,
-        signature: signature.clone().into_vec(), // Include the header's signature in SignedData
-    };
+    // let signed_data = SignedData {
+    //     header,
+    //     contents,
+    //     signature: signature.clone().into_vec(), // Include the header's signature in SignedData
+    // };
+    let signed_data = SignedData::new(header, contents, signature.clone().into_vec());
+
 
     // Serialize the SignedData
     let signed_data_str = serde_json::to_string_pretty(&signed_data)?;
@@ -160,7 +159,7 @@ pub fn quantum_verify(input: &str, sig_algo: Sig, pk: &PublicKey, cs_id: usize) 
     let signed_data: SignedData = serde_json::from_slice(&contents)?;
 
     // Serialize the header part of the SignedData for hashing
-    let header_bytes = serde_json::to_vec(&signed_data.header)?;
+    let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
 
     // Re-hash the serialized header
     let hashed_header_result = hash_based_on_cs_id(cs_id, &header_bytes);
@@ -171,9 +170,10 @@ pub fn quantum_verify(input: &str, sig_algo: Sig, pk: &PublicKey, cs_id: usize) 
         Err(e) => return Err(e),
     };
 
+
     // Convert Vec<u8> to SignatureRef for verification
     let signature_ref = sig_algo
-        .signature_from_bytes(&signed_data.signature)
+        .signature_from_bytes(&signed_data.get_signature())
         .ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -236,6 +236,7 @@ impl CipherSuite for Dilithium2Sha256 {
         // Sign file
         quantum_sign(
             self.cs_id,
+            contents,
             file_hash,
             length,
             output,
@@ -255,7 +256,7 @@ impl CipherSuite for Dilithium2Sha256 {
         let signed_data: SignedData = serde_json::from_slice(&contents)?;
 
         // Serialize the header part of the SignedData for hashing
-        let header_bytes = serde_json::to_vec(&signed_data.header)?;
+        let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
 
         // Re-hash the serialized header
         let hashed_header = self.hash(&header_bytes);
@@ -265,7 +266,7 @@ impl CipherSuite for Dilithium2Sha256 {
         let pk_bytes = self.get_pk_bytes();
 
         let signature_ref = sig_algo
-            .signature_from_bytes(&signed_data.signature)
+            .signature_from_bytes(&signed_data.get_signature())
             .ok_or_else(|| {
                 io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -350,6 +351,7 @@ impl CipherSuite for Dilithium2Sha512 {
         // Sign file
         quantum_sign(
             self.cs_id,
+            contents,
             file_hash,
             length,
             output,
@@ -369,7 +371,7 @@ impl CipherSuite for Dilithium2Sha512 {
         let signed_data: SignedData = serde_json::from_slice(&contents)?;
 
         // Serialize the header part of the SignedData for hashing
-        let header_bytes = serde_json::to_vec(&signed_data.header)?;
+        let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
 
         // Re-hash the serialized header
         let hashed_header = self.hash(&header_bytes);
@@ -379,7 +381,7 @@ impl CipherSuite for Dilithium2Sha512 {
         let pk_bytes = self.get_pk_bytes();
 
         let signature_ref = sig_algo
-            .signature_from_bytes(&signed_data.signature)
+            .signature_from_bytes(&signed_data.get_signature())
             .ok_or_else(|| {
                 io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -464,6 +466,7 @@ impl CipherSuite for Falcon512Sha256 {
         // Sign file
         quantum_sign(
             self.cs_id,
+            contents,
             file_hash,
             length,
             output,
@@ -483,7 +486,7 @@ impl CipherSuite for Falcon512Sha256 {
         let signed_data: SignedData = serde_json::from_slice(&contents)?;
 
         // Serialize the header part of the SignedData for hashing
-        let header_bytes = serde_json::to_vec(&signed_data.header)?;
+        let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
 
         // Re-hash the serialized header
         let hashed_header = self.hash(&header_bytes);
@@ -493,7 +496,7 @@ impl CipherSuite for Falcon512Sha256 {
         let pk_bytes = self.get_pk_bytes();
 
         let signature_ref = sig_algo
-            .signature_from_bytes(&signed_data.signature)
+            .signature_from_bytes(&signed_data.get_signature())
             .ok_or_else(|| {
                 io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -578,6 +581,7 @@ impl CipherSuite for Falcon512Sha512 {
         // Sign file
         quantum_sign(
             self.cs_id,
+            contents,
             file_hash,
             length,
             output,
@@ -597,7 +601,7 @@ impl CipherSuite for Falcon512Sha512 {
         let signed_data: SignedData = serde_json::from_slice(&contents)?;
 
         // Serialize the header part of the SignedData for hashing
-        let header_bytes = serde_json::to_vec(&signed_data.header)?;
+        let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
 
         // Re-hash the serialized header
         let hashed_header = self.hash(&header_bytes);
@@ -607,7 +611,7 @@ impl CipherSuite for Falcon512Sha512 {
         let pk_bytes = self.get_pk_bytes();
 
         let signature_ref = sig_algo
-            .signature_from_bytes(&signed_data.signature)
+            .signature_from_bytes(&signed_data.get_signature())
             .ok_or_else(|| {
                 io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -706,11 +710,13 @@ impl CipherSuite for RsaSha256 {
         let signature = signature.to_vec();
 
         // Create SignedData instance with the header, contents, and header's signature
-        let signed_data = SignedData {
-            header,
-            contents,
-            signature,
-        };
+        // let signed_data = SignedData {
+        //     header,
+        //     contents,
+        //     signature,
+        // };
+        let signed_data = SignedData::new(header, contents, signature);
+
 
         // Serialize the SignedData
         let signed_data_str = serde_json::to_string_pretty(&signed_data)?;
@@ -732,13 +738,13 @@ impl CipherSuite for RsaSha256 {
         let signed_data: SignedData = serde_json::from_slice(&contents)?;
 
         // Serialize the header to bytes
-        let header_bytes = serde_json::to_vec(&signed_data.header)?;
+        let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
 
         // Re-hash the serialized header
         let hashed_header = self.hash(&header_bytes);
 
         // Convert the stored signature into a format suitable for verification
-        let signature = rsa::pkcs1v15::Signature::try_from(signed_data.signature.as_slice())
+        let signature = rsa::pkcs1v15::Signature::try_from(signed_data.get_signature().as_slice())
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
 
         // Recreate the signing key
