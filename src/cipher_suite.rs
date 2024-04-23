@@ -150,7 +150,7 @@ pub fn quantum_sign(
     Ok(())
 }
 
-pub fn quantum_verify(input: &str, sig_algo: Sig, pk: &PublicKey) -> io::Result<()> {
+pub fn quantum_verify(input: &str, sig_algo: Sig, pk: &PublicKey, cs_id: usize) -> io::Result<()> {
     // Open and read the serialized SignedData from the file
     let mut file = File::open(input)?;
     let mut contents = Vec::new();
@@ -163,17 +163,12 @@ pub fn quantum_verify(input: &str, sig_algo: Sig, pk: &PublicKey) -> io::Result<
     let header_bytes = serde_json::to_vec(&signed_data.header)?;
 
     // Re-hash the serialized header
-    let hashed_header = match signed_data.header.cs_id {
-        1 => sha256_hash(&header_bytes),
-        2 => sha512_hash(&header_bytes),
-        3 => sha256_hash(&header_bytes),
-        4 => sha512_hash(&header_bytes),
-        _ => {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Unsupported cipher suite id",
-            ))
-        }
+    let hashed_header_result = hash_based_on_cs_id(cs_id, &header_bytes);
+
+    // let hashed_header = hash_based_on_cs_id(cs_id, &header_bytes);
+    let hashed_header = match hashed_header_result {
+        Ok(hashed) => hashed,
+        Err(e) => return Err(e),
     };
 
     // Convert Vec<u8> to SignatureRef for verification
@@ -187,9 +182,10 @@ pub fn quantum_verify(input: &str, sig_algo: Sig, pk: &PublicKey) -> io::Result<
         })?;
 
     // Verify the signature using the provided public key and the hash
-    sig_algo
-        .verify(&hashed_header, signature_ref, pk)
-        .expect("OQS error: Verification failed");
+    sig_algo.verify(&hashed_header, signature_ref, pk)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("OQS error: Verification failed - {}", e)))?;
+
+
     Ok(())
 }
 
