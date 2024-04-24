@@ -43,26 +43,46 @@ cargo run -- remove --name <name> --wallet <path to wallet>
 ## Quantum Example
 ```
 cargo run -- generate -n bob -c 1 -w .wallet
+cargo run -- generate -n mallory -c 2 -w .wallet
+cargo run -- generate -n dude -c 3 -w .wallet
+cargo run -- generate -n alice -c 4 -w .wallet
+cargo run -- generate -n shiv -c 5 -w .wallet
 ```
 ```
-cargo run sign -n bob -f files/file_test.txt -o file_test_sig -w .wallet
+cargo run sign -n bob -f README.md -o bob_test_sig -w .wallet
+cargo run sign -n mallory -f README.md -o mallory_test_sig -w .wallet
+cargo run sign -n dude -f README.md -o dude_test_sig -w .wallet
+cargo run sign -n alice -f README.md -o alice_test_sig -w .wallet
+cargo run sign -n shiv -f README.md -o shiv_test_sig -w .wallet
 ```
 ```
-cargo run verify -n bob -f file_test_sig -w .wallet
+cargo run verify -n bob -f bob_test_sig -w .wallet
+cargo run verify -n mallory -f mallory_test_sig -w .wallet
+cargo run verify -n dude -f dude_test_sig -w .wallet
+cargo run verify -n alice -f alice_test_sig -w .wallet
+cargo run verify -n shiv -f shiv_test_sig -w .wallet
 ```
 ```
 cargo run remove -n bob -w .wallet
+cargo run remove -n mallory -w .wallet
+cargo run remove -n dude -w .wallet
+cargo run remove -n alice -w .wallet
+cargo run remove -n shiv -w .wallet
+```
 ```
 
 ## Non quantum RSA Example signing + verify
 ```
-cargo run -- generate -n mallory -c 5 -w .wallet
+cargo run -- generate -n joe -c 5 -w .wallet
 ```
 ```
-cargo run sign -n mallory -f files/file_test.txt -o mallory_sig_path -w .wallet
+cargo run sign -n joe -f README.md -o joe_test_sig -w .wallet
 ```
 ```
-cargo run verify -n mallory -f mallory_sig_path -w .wallet
+cargo run verify -n joe -f joe_test_sig -w .wallet
+```
+```
+cargo run remove -n joe -w .wallet
 ```
 
 ## Testing Core Functionality
@@ -71,4 +91,4 @@ cargo test --test official_test -- --show-output
 ``` 
 
 ## Persistence
-- Wallet data is stored in wallet file. By convention, this file is called .wallet
+- Persona data is stored in wallet directory in json format. 

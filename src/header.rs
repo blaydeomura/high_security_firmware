@@ -3,48 +3,28 @@ use serde::{Deserialize, Serialize};
 // A struct to store information about a file and its signature
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Header {
-    file_type: usize,
     cs_id: usize,
+    file_type: usize,
     length: usize,
     file_hash: Vec<u8>,
     pk: Vec<u8>,
-    signature: Vec<u8>,
-    contents: Vec<u8>,
 }
 
 impl Header {
     // Constructs a header with the given information
-    pub fn new(
-        cs_id: usize,
-        file_hash: Vec<u8>,
-        pk: Vec<u8>,
-        signature: Vec<u8>,
-        length: usize,
-        contents: Vec<u8>,
-    ) -> Self {
+    pub fn new(cs_id: usize, length: usize, file_hash: Vec<u8>, pk: Vec<u8>) -> Self {
         Header {
-            file_type: 1,
             cs_id,
+            file_type: 1,
             length,
             file_hash,
             pk,
-            signature,
-            contents,
         }
     }
 
     // Checks if public keys match
     pub fn verify_sender(&self, pk: Vec<u8>) {
         assert_eq!(self.pk, pk, "Verification failed: invalid public key");
-    }
-
-    // Checks if length field matches actaul length of message
-    pub fn verify_message_len(&self) {
-        assert_eq!(
-            self.length,
-            self.contents.len(),
-            "Verification failed: invalid message length"
-        );
     }
 
     // Checks if hash of file contents matches expected hash
@@ -65,6 +45,49 @@ impl Header {
         &self.pk
     }
 
+    // Getter method for length
+    pub fn get_length(&self) -> usize {
+        self.length
+    }
+
+    // Getter method for hash
+    pub fn get_hash(&self) -> &Vec<u8> {
+        &self.file_hash
+    }
+
+    // Getter method for hash
+    pub fn get_pk_bytes(&self) -> &Vec<u8> {
+        &self.pk
+    }
+}
+
+// A struct to store information about a file and its signature
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SignedData {
+    header: Header,
+    contents: Vec<u8>,
+    signature: Vec<u8>,
+}
+
+impl SignedData {
+    // Constructs a header with the given information
+    pub fn new(header: Header, contents: Vec<u8>, signature: Vec<u8>) -> Self {
+        SignedData {
+            header,
+            contents,
+            signature,
+        }
+    }
+
+    // Checks if length field matches actaul length of message
+    pub fn verify_message_len(&self) {
+        assert_eq!(
+            self.header.length,
+            self.contents.len(),
+            "Verification failed: invalid message length"
+        );
+    }
+
     // Getter method for content
     pub fn get_contents(&self) -> &Vec<u8> {
         &self.contents
@@ -73,6 +96,11 @@ impl Header {
     // Getter method for signature
     pub fn get_signature(&self) -> &Vec<u8> {
         &self.signature
+    }
+
+    // Getter for header
+    pub fn get_header(&self) -> &Header {
+        &self.header
     }
 }
 
