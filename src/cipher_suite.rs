@@ -170,7 +170,6 @@ pub fn quantum_verify(
     // Re-hash the serialized header
     let hashed_header_result = hash_based_on_cs_id(cs_id, &header_bytes);
 
-    // let hashed_header = hash_based_on_cs_id(cs_id, &header_bytes);
     let hashed_header = match hashed_header_result {
         Ok(hashed) => hashed,
         Err(e) => return Err(e),
