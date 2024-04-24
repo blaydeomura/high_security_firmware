@@ -267,6 +267,7 @@ impl CipherSuite for Dilithium2Sha256 {
         // Deserialize the SignedData
         let signed_data: SignedData = serde_json::from_slice(&contents)?;  
         
+        // Re-hash contents for verification
         let contents_hash = signed_data.get_contents();
         let hash = self.hash(contents_hash);
 
@@ -357,38 +358,16 @@ impl CipherSuite for Dilithium2Sha512 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;
-
-        // Serialize the header part of the SignedData for hashing
-        let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
-
-        // Re-hash the serialized header
-        let hashed_header = self.hash(&header_bytes);
+        let signed_data: SignedData = serde_json::from_slice(&contents)?;  
+        
+        // Re hash contents
+        let contents_hash = signed_data.get_contents();
+        let hash = self.hash(contents_hash);
 
         // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
-        let pk_bytes = self.get_pk_bytes();
 
-        let signature_ref = sig_algo
-            .signature_from_bytes(&signed_data.get_signature())
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Failed to create signature reference",
-                )
-            })?;
-
-        // Retrieve public key from stored bytes
-        let pk = sig_algo.public_key_from_bytes(&pk_bytes).ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Failed to create public key")
-        })?;
-
-        // Verify the signature using the provided public key and the hash
-        sig_algo
-            .verify(&hashed_header, signature_ref, &pk)
-            .map_err(|e| {
-                io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e))
-            })
+        quantum_verify(signed_data.get_header(), hash,  input, sig_algo, self.get_pk_bytes(), self.cs_id)
     }
 
     fn get_name(&self) -> &String {
@@ -472,38 +451,16 @@ impl CipherSuite for Falcon512Sha256 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;
-
-        // Serialize the header part of the SignedData for hashing
-        let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
-
-        // Re-hash the serialized header
-        let hashed_header = self.hash(&header_bytes);
+        let signed_data: SignedData = serde_json::from_slice(&contents)?;  
+        
+        // Re hash contents
+        let contents_hash = signed_data.get_contents();
+        let hash = self.hash(contents_hash);
 
         // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
-        let pk_bytes = self.get_pk_bytes();
 
-        let signature_ref = sig_algo
-            .signature_from_bytes(&signed_data.get_signature())
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Failed to create signature reference",
-                )
-            })?;
-
-        // Retrieve public key from stored bytes
-        let pk = sig_algo.public_key_from_bytes(&pk_bytes).ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Failed to create public key")
-        })?;
-
-        // Verify the signature using the provided public key and the hash
-        sig_algo
-            .verify(&hashed_header, signature_ref, &pk)
-            .map_err(|e| {
-                io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e))
-            })
+        quantum_verify(signed_data.get_header(), hash,  input, sig_algo, self.get_pk_bytes(), self.cs_id)
     }
 
     fn get_name(&self) -> &String {
