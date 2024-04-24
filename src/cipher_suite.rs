@@ -186,7 +186,7 @@ pub fn quantum_verify(
             )
         })?;
 
-    // Need to convert bytes back into public key for verification 
+    // Need to convert bytes back into public key for verification
     let pk = sig_algo.public_key_from_bytes(&pk).unwrap();
 
     // Verify the signature using the provided public key and the hash
@@ -265,8 +265,8 @@ impl CipherSuite for Dilithium2Sha256 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;  
-        
+        let signed_data: SignedData = serde_json::from_slice(&contents)?;
+
         // Re-hash contents for verification
         let contents_hash = signed_data.get_contents();
         let hash = self.hash(contents_hash);
@@ -274,7 +274,14 @@ impl CipherSuite for Dilithium2Sha256 {
         // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
 
-        quantum_verify(signed_data.get_header(), hash,  input, sig_algo, self.get_pk_bytes(), self.cs_id)
+        quantum_verify(
+            signed_data.get_header(),
+            hash,
+            input,
+            sig_algo,
+            self.get_pk_bytes(),
+            self.cs_id,
+        )
     }
 
     fn get_name(&self) -> &String {
@@ -358,8 +365,8 @@ impl CipherSuite for Dilithium2Sha512 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;  
-        
+        let signed_data: SignedData = serde_json::from_slice(&contents)?;
+
         // Re hash contents
         let contents_hash = signed_data.get_contents();
         let hash = self.hash(contents_hash);
@@ -367,7 +374,14 @@ impl CipherSuite for Dilithium2Sha512 {
         // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
 
-        quantum_verify(signed_data.get_header(), hash,  input, sig_algo, self.get_pk_bytes(), self.cs_id)
+        quantum_verify(
+            signed_data.get_header(),
+            hash,
+            input,
+            sig_algo,
+            self.get_pk_bytes(),
+            self.cs_id,
+        )
     }
 
     fn get_name(&self) -> &String {
@@ -451,8 +465,8 @@ impl CipherSuite for Falcon512Sha256 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;  
-        
+        let signed_data: SignedData = serde_json::from_slice(&contents)?;
+
         // Re hash contents
         let contents_hash = signed_data.get_contents();
         let hash = self.hash(contents_hash);
@@ -460,7 +474,14 @@ impl CipherSuite for Falcon512Sha256 {
         // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
 
-        quantum_verify(signed_data.get_header(), hash,  input, sig_algo, self.get_pk_bytes(), self.cs_id)
+        quantum_verify(
+            signed_data.get_header(),
+            hash,
+            input,
+            sig_algo,
+            self.get_pk_bytes(),
+            self.cs_id,
+        )
     }
 
     fn get_name(&self) -> &String {
@@ -544,8 +565,8 @@ impl CipherSuite for Falcon512Sha512 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;  
-        
+        let signed_data: SignedData = serde_json::from_slice(&contents)?;
+
         // Re hash contents
         let contents_hash = signed_data.get_contents();
         let hash = self.hash(contents_hash);
@@ -553,7 +574,14 @@ impl CipherSuite for Falcon512Sha512 {
         // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
 
-        quantum_verify(signed_data.get_header(), hash,  input, sig_algo, self.get_pk_bytes(), self.cs_id)
+        quantum_verify(
+            signed_data.get_header(),
+            hash,
+            input,
+            sig_algo,
+            self.get_pk_bytes(),
+            self.cs_id,
+        )
     }
 
     fn get_name(&self) -> &String {
@@ -646,7 +674,6 @@ impl CipherSuite for RsaSha256 {
     }
 
     fn verify(&self, input: &str) -> io::Result<()> {
-        // fn verify(&self, input: &str) -> io::Result<()> {
         // Open the signed data file and read contents
         let mut file = File::open(input)?;
         let mut contents = Vec::new();
@@ -661,10 +688,10 @@ impl CipherSuite for RsaSha256 {
         // Serialize the header to bytes
         let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
 
-        // Verify hash of message
-        signed_data
-            .get_header()
-            .verify_hash(&signed_data.get_header().get_hash());
+        // Re-hash contents for verification
+        let contents_hash = signed_data.get_contents();
+        let hash = self.hash(contents_hash);
+        signed_data.get_header().verify_hash(&hash);
 
         // Verify sender
         signed_data
