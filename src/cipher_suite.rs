@@ -140,17 +140,15 @@ pub fn quantum_sign(
 }
 
 pub fn quantum_verify(
-    header: Header,
+    header: &Header,
+    file_hash: Vec<u8>,
     input: &str,
     sig_algo: Sig,
-    pk: &PublicKey,
+    pk: Vec<u8>,
     cs_id: usize,
 ) -> io::Result<()> {
     // Verify sender, length of message, and hash of message
-    header.verify_sender(pk.clone().into_vec());
-
-    // Verify hash of message
-    header.verify_hash(&header.get_hash());
+    header.verify_sender(pk.clone());
 
     // Open and read the serialized SignedData from the file
     let mut file = File::open(input)?;
@@ -162,6 +160,9 @@ pub fn quantum_verify(
 
     // Verify message len
     signed_data.verify_message_len();
+
+    // Verify hash
+    header.verify_hash(&file_hash);
 
     // Serialize the header part of the SignedData for hashing
     let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
@@ -184,6 +185,9 @@ pub fn quantum_verify(
                 "Failed to create signature reference",
             )
         })?;
+
+    // Need to convert bytes back into public key for verification 
+    let pk = sig_algo.public_key_from_bytes(&pk).unwrap();
 
     // Verify the signature using the provided public key and the hash
     sig_algo
@@ -254,7 +258,6 @@ impl CipherSuite for Dilithium2Sha256 {
             &self.sk,
         )
     }
-
     fn verify(&self, input: &str) -> io::Result<()> {
         // Read the serialized SignedData from the file
         let mut file = File::open(input)?;
@@ -262,38 +265,15 @@ impl CipherSuite for Dilithium2Sha256 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;
-
-        // Serialize the header part of the SignedData for hashing
-        let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
-
-        // Re-hash the serialized header
-        let hashed_header = self.hash(&header_bytes);
+        let signed_data: SignedData = serde_json::from_slice(&contents)?;  
+        
+        let contents_hash = signed_data.get_contents();
+        let hash = self.hash(contents_hash);
 
         // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
-        let pk_bytes = self.get_pk_bytes();
 
-        let signature_ref = sig_algo
-            .signature_from_bytes(&signed_data.get_signature())
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Failed to create signature reference",
-                )
-            })?;
-
-        // Retrieve public key from stored bytes
-        let pk = sig_algo.public_key_from_bytes(&pk_bytes).ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "Failed to create public key")
-        })?;
-
-        // Verify the signature using the provided public key and the hash
-        sig_algo
-            .verify(&hashed_header, signature_ref, &pk)
-            .map_err(|e| {
-                io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e))
-            })
+        quantum_verify(signed_data.get_header(), hash,  input, sig_algo, self.get_pk_bytes(), self.cs_id)
     }
 
     fn get_name(&self) -> &String {
