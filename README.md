@@ -22,23 +22,26 @@ cargo run -- algorithms
 
 * Generate a new ciphersuite with the specified algorithms
 ```
-cargo run -- generate --name <name> --cs-id <id> --wallet <path to wallet>
+cargo run -- generate -n <name> --c <cs id> -w .wallet
 ```
 
 * Sign a file using the specified persona
 ```
-cargo run -- sign --name <name of signer> --file <file to sign> --output <signed data file> --wallet <path to wallet>
+cargo run sign -n <name of signer> -f <file to sign> -o <signed file output name> -w .wallet
 ```
 
 * Verify a file based on signer and header file
 ```
-cargo run -- verify --name <name of signer> --file <signed data file> --wallet <path to wallet>
+cargo run verify -n bob -f bob_test_sig -w .wallet
+cargo run verify -n <name of signer> -f <signed data file> -w .wallet
 ```
 
 * Remove a persona from wallet
 ```
-cargo run -- remove --name <name> --wallet <path to wallet>
+cargo run remove -n <name> -w .wallet
 ```
+
+* Note: You will want to remove your signed output file as well if you remove the corresponding name from wallet
 
 ## Quantum Example
 ```
