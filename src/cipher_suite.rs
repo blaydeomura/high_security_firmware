@@ -164,6 +164,9 @@ pub fn quantum_verify(
     // Verify hash
     header.verify_hash(&file_hash);
 
+    // Verify file type
+    header.verify_file_type();
+
     // Serialize the header part of the SignedData for hashing
     let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
 
@@ -683,6 +686,9 @@ impl CipherSuite for RsaSha256 {
 
         // Verify message len
         signed_data.verify_message_len();
+
+        // Verify file type
+        signed_data.get_header().verify_file_type();
 
         // Serialize the header to bytes
         let header_bytes = serde_json::to_vec(&signed_data.get_header())?;

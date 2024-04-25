@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Header {
     cs_id: usize,
-    file_type: usize,
+    file_type: Vec<u8>,
     length: usize,
     file_hash: Vec<u8>,
     pk: Vec<u8>,
@@ -15,7 +15,7 @@ impl Header {
     pub fn new(cs_id: usize, length: usize, file_hash: Vec<u8>, pk: Vec<u8>) -> Self {
         Header {
             cs_id,
-            file_type: 1,
+            file_type: b"SignedData".to_vec(),
             length,
             file_hash,
             pk,
@@ -33,6 +33,11 @@ impl Header {
             do_vecs_match(hash, &self.file_hash),
             "Verification failed: invalid file contents"
         );
+    }
+
+    // Method to verify that the file_type is "SignedData"
+    pub fn verify_file_type(&self) -> bool {
+        self.file_type == b"SignedData".to_vec()
     }
 
     // Getter method for cs_id
