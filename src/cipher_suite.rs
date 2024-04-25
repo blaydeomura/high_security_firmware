@@ -89,7 +89,8 @@ fn sha512_hash(buffer: &[u8]) -> Vec<u8> {
 // }
 
 // Hashes input data based on the specified cipher suite ID.
-fn hash_based_on_cs_id(cs_id: usize, data: &[u8]) -> io::Result<Vec<u8>> {
+// fn hash_based_on_cs_id(cs_id: usize, data: &[u8]) -> io::Result<Vec<u8>> {
+fn hash_based_on_cs_id(cs_id: usize, data: &Vec<u8>) -> io::Result<Vec<u8>> {
     match cs_id {
         1 | 3 | 5 => Ok(sha256_hash(data)),
         2 | 4 => Ok(sha512_hash(data)),
@@ -117,7 +118,8 @@ pub fn quantum_sign(
     let header = Header::new(cs_id, length, file_hash?, pk_bytes);
 
     // Serialize the header
-    let header_bytes = serde_json::to_vec(&header)?;
+    let header_bytes = serde_cbor::to_vec(&header)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e)))?;
 
     // Hash the header bytes
     let hashed_header = hash_based_on_cs_id(cs_id, &header_bytes);
@@ -130,11 +132,15 @@ pub fn quantum_sign(
     let signed_data = SignedData::new(header, signature.clone().into_vec(), contents);
 
     // Serialize the SignedData
-    let signed_data_str = serde_json::to_string_pretty(&signed_data)?;
+    let signed_data_str = serde_cbor::to_vec(&signed_data)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e)))?;
+
 
     // Write serialized SignedData to output file
+    // let mut out_file = OpenOptions::new().write(true).create(true).open(output)?;
+    // Write::write_all(&mut out_file, signed_data_str.as_bytes())?;
     let mut out_file = OpenOptions::new().write(true).create(true).open(output)?;
-    Write::write_all(&mut out_file, signed_data_str.as_bytes())?;
+    Write::write_all(&mut out_file, &signed_data_str)?;
 
     Ok(())
 }
@@ -156,7 +162,10 @@ pub fn quantum_verify(
     file.read_to_end(&mut contents)?;
 
     // Deserialize the SignedData
-    let signed_data: SignedData = serde_json::from_slice(&contents)?;
+    let signed_data: SignedData = serde_cbor::from_slice(&contents)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e)))?;
+
+
 
     // Verify message len
     signed_data.verify_message_len();
@@ -168,7 +177,10 @@ pub fn quantum_verify(
     header.verify_file_type();
 
     // Serialize the header part of the SignedData for hashing
-    let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
+    let header_bytes = serde_cbor::to_vec(&signed_data.get_header())
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e)))?;
+
+
 
     // Re-hash the serialized header
     let hashed_header_result = hash_based_on_cs_id(cs_id, &header_bytes);
@@ -267,7 +279,9 @@ impl CipherSuite for Dilithium2Sha256 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;
+        let signed_data: SignedData = serde_cbor::from_slice(&contents)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e)))?;
+
 
         // Re-hash contents for verification
         let contents_hash = signed_data.get_contents();

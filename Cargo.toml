@@ -26,6 +26,8 @@ hex = "0.4.3"
 erased-serde = "0.4.4"
 json = "0.12.4"
 # criterion = "0.3"
+serde_cbor = "0.10"
+
 
 # non quantum
 rsa = {version = "0.9.6", features=["serde", "sha2"]}
