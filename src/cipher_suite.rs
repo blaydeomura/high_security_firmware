@@ -127,7 +127,7 @@ pub fn quantum_sign(
         .sign(&hashed_header?, sk)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 
-    let signed_data = SignedData::new(header, contents, signature.clone().into_vec());
+    let signed_data = SignedData::new(header, signature.clone().into_vec(), contents);
 
     // Serialize the SignedData
     let signed_data_str = serde_json::to_string_pretty(&signed_data)?;
@@ -660,7 +660,7 @@ impl CipherSuite for RsaSha256 {
         let signature = signing_key.sign_with_rng(&mut rng, &hashed_header);
         let signature = signature.to_vec();
 
-        let signed_data = SignedData::new(header, contents, signature);
+        let signed_data = SignedData::new(header, signature, contents);
 
         // Serialize the SignedData
         let signed_data_str = serde_json::to_string_pretty(&signed_data)?;

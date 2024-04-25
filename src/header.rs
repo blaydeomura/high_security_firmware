@@ -65,17 +65,17 @@ impl Header {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SignedData {
     header: Header,
-    contents: Vec<u8>,
     signature: Vec<u8>,
+    contents: Vec<u8>,
 }
 
 impl SignedData {
     // Constructs a header with the given information
-    pub fn new(header: Header, contents: Vec<u8>, signature: Vec<u8>) -> Self {
+    pub fn new(header: Header, signature: Vec<u8>, contents: Vec<u8>) -> Self {
         SignedData {
             header,
-            contents,
             signature,
+            contents,
         }
     }
 
