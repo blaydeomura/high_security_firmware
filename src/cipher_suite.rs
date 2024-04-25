@@ -100,6 +100,15 @@ fn hash_based_on_cs_id(cs_id: usize, data: &[u8]) -> io::Result<Vec<u8>> {
     }
 }
 
+// Helper function for verify functions
+fn read_and_deserialize(path: &str) -> io::Result<SignedData> {
+    let mut file = File::open(path)?;
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents)?;
+    serde_cbor::from_slice(&contents)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e)))
+}
+
 pub fn quantum_sign(
     cs_id: usize,
     contents: Vec<u8>,
@@ -143,32 +152,21 @@ pub fn quantum_sign(
     Ok(())
 }
 
-pub fn quantum_verify(
-    header: &Header,
-    file_hash: Vec<u8>,
-    input: &str,
-    sig_algo: Sig,
-    pk: Vec<u8>,
-    cs_id: usize,
-) -> io::Result<()> {
-    // Verify sender, length of message, and hash of message
-    header.verify_sender(pk.clone());
+pub fn quantum_verify(input: &str, sig_algo: Sig, pk: Vec<u8>, cs_id: usize) -> io::Result<()> {
+    // Create signed data with helper
+    let signed_data = read_and_deserialize(input)?;
 
-    // Open and read the serialized SignedData from the file
-    let mut file = File::open(input)?;
-    let mut contents = Vec::new();
-    file.read_to_end(&mut contents)?;
-
-    // Deserialize the SignedData
-    let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
-        io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
-    })?;
+    // Declare helper function
+    let header = signed_data.get_header();
 
     // Verify message len
     signed_data.verify_message_len();
 
+    // Verify sender, length of message, and hash of message
+    header.verify_sender(pk.clone());
+
     // Verify hash
-    header.verify_hash(&file_hash);
+    header.verify_hash(&hash_based_on_cs_id(cs_id, signed_data.get_contents())?);
 
     // Verify file type
     header.verify_file_type();
@@ -269,31 +267,9 @@ impl CipherSuite for Dilithium2Sha256 {
         )
     }
     fn verify(&self, input: &str) -> io::Result<()> {
-        // Read the serialized SignedData from the file
-        let mut file = File::open(input)?;
-        let mut contents = Vec::new();
-        file.read_to_end(&mut contents)?;
-
-        // Deserialize the SignedData
-        let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
-        })?;
-
-        // Re-hash contents for verification
-        let contents_hash = signed_data.get_contents();
-        let hash = self.hash(contents_hash);
-
-        // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
 
-        quantum_verify(
-            signed_data.get_header(),
-            hash,
-            input,
-            sig_algo,
-            self.get_pk_bytes(),
-            self.cs_id,
-        )
+        quantum_verify(input, sig_algo, self.get_pk_bytes(), self.cs_id)
     }
 
     fn get_name(&self) -> &String {
@@ -371,31 +347,9 @@ impl CipherSuite for Dilithium2Sha512 {
     }
 
     fn verify(&self, input: &str) -> io::Result<()> {
-        // Read the serialized SignedData from the file
-        let mut file = File::open(input)?;
-        let mut contents = Vec::new();
-        file.read_to_end(&mut contents)?;
-
-        // Deserialize the SignedData
-        let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
-        })?;
-
-        // Re hash contents
-        let contents_hash = signed_data.get_contents();
-        let hash = self.hash(contents_hash);
-
-        // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
 
-        quantum_verify(
-            signed_data.get_header(),
-            hash,
-            input,
-            sig_algo,
-            self.get_pk_bytes(),
-            self.cs_id,
-        )
+        quantum_verify(input, sig_algo, self.get_pk_bytes(), self.cs_id)
     }
 
     fn get_name(&self) -> &String {
@@ -473,31 +427,9 @@ impl CipherSuite for Falcon512Sha256 {
     }
 
     fn verify(&self, input: &str) -> io::Result<()> {
-        // Read the serialized SignedData from the file
-        let mut file = File::open(input)?;
-        let mut contents = Vec::new();
-        file.read_to_end(&mut contents)?;
-
-        // Deserialize the SignedData
-        let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
-        })?;
-
-        // Re hash contents
-        let contents_hash = signed_data.get_contents();
-        let hash = self.hash(contents_hash);
-
-        // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
 
-        quantum_verify(
-            signed_data.get_header(),
-            hash,
-            input,
-            sig_algo,
-            self.get_pk_bytes(),
-            self.cs_id,
-        )
+        quantum_verify(input, sig_algo, self.get_pk_bytes(), self.cs_id)
     }
 
     fn get_name(&self) -> &String {
@@ -575,31 +507,9 @@ impl CipherSuite for Falcon512Sha512 {
     }
 
     fn verify(&self, input: &str) -> io::Result<()> {
-        // Read the serialized SignedData from the file
-        let mut file = File::open(input)?;
-        let mut contents = Vec::new();
-        file.read_to_end(&mut contents)?;
-
-        // Deserialize the SignedData
-        let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
-        })?;
-
-        // Re hash contents
-        let contents_hash = signed_data.get_contents();
-        let hash = self.hash(contents_hash);
-
-        // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
 
-        quantum_verify(
-            signed_data.get_header(),
-            hash,
-            input,
-            sig_algo,
-            self.get_pk_bytes(),
-            self.cs_id,
-        )
+        quantum_verify(input, sig_algo, self.get_pk_bytes(), self.cs_id)
     }
 
     fn get_name(&self) -> &String {
@@ -696,15 +606,8 @@ impl CipherSuite for RsaSha256 {
     }
 
     fn verify(&self, input: &str) -> io::Result<()> {
-        // Open the signed data file and read contents
-        let mut file = File::open(input)?;
-        let mut contents = Vec::new();
-        file.read_to_end(&mut contents)?;
-
-        // Deserialize the SignedData
-        let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
-            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
-        })?;
+        // Create signed data with helper
+        let signed_data = read_and_deserialize(input)?;
 
         // Verify message len
         signed_data.verify_message_len();
