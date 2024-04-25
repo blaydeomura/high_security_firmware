@@ -267,7 +267,6 @@ impl CipherSuite for Dilithium2Sha256 {
         )
     }
     fn verify(&self, input: &str) -> io::Result<()> {
-        // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
 
         quantum_verify(input, sig_algo, self.get_pk_bytes(), self.cs_id)
@@ -348,7 +347,6 @@ impl CipherSuite for Dilithium2Sha512 {
     }
 
     fn verify(&self, input: &str) -> io::Result<()> {
-        // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
 
         quantum_verify(input, sig_algo, self.get_pk_bytes(), self.cs_id)
@@ -429,7 +427,6 @@ impl CipherSuite for Falcon512Sha256 {
     }
 
     fn verify(&self, input: &str) -> io::Result<()> {
-        // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
 
         quantum_verify(input, sig_algo, self.get_pk_bytes(), self.cs_id)
@@ -510,7 +507,6 @@ impl CipherSuite for Falcon512Sha512 {
     }
 
     fn verify(&self, input: &str) -> io::Result<()> {
-        // Convert Vec<u8> to SignatureRef for verification
         let sig_algo = Sig::new(Algorithm::Falcon512).expect("Failed to create sig object");
 
         quantum_verify(input, sig_algo, self.get_pk_bytes(), self.cs_id)
