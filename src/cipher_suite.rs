@@ -117,7 +117,9 @@ pub fn quantum_sign(
     let header = Header::new(cs_id, length, file_hash?, pk_bytes);
 
     // Serialize the header
-    let header_bytes = serde_json::to_vec(&header)?;
+    let header_bytes = serde_cbor::to_vec(&header).map_err(|e| {
+        io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+    })?;
 
     // Hash the header bytes
     let hashed_header = hash_based_on_cs_id(cs_id, &header_bytes);
@@ -127,14 +129,16 @@ pub fn quantum_sign(
         .sign(&hashed_header?, sk)
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("Signing failed: {}", e)))?;
 
-    let signed_data = SignedData::new(header, contents, signature.clone().into_vec());
+    let signed_data = SignedData::new(header, signature.clone().into_vec(), contents);
 
     // Serialize the SignedData
-    let signed_data_str = serde_json::to_string_pretty(&signed_data)?;
+    let signed_data_str = serde_cbor::to_vec(&signed_data).map_err(|e| {
+        io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+    })?;
 
     // Write serialized SignedData to output file
     let mut out_file = OpenOptions::new().write(true).create(true).open(output)?;
-    Write::write_all(&mut out_file, signed_data_str.as_bytes())?;
+    Write::write_all(&mut out_file, &signed_data_str)?;
 
     Ok(())
 }
@@ -156,7 +160,9 @@ pub fn quantum_verify(
     file.read_to_end(&mut contents)?;
 
     // Deserialize the SignedData
-    let signed_data: SignedData = serde_json::from_slice(&contents)?;
+    let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
+        io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+    })?;
 
     // Verify message len
     signed_data.verify_message_len();
@@ -164,8 +170,13 @@ pub fn quantum_verify(
     // Verify hash
     header.verify_hash(&file_hash);
 
+    // Verify file type
+    header.verify_file_type();
+
     // Serialize the header part of the SignedData for hashing
-    let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
+    let header_bytes = serde_cbor::to_vec(&signed_data.get_header()).map_err(|e| {
+        io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+    })?;
 
     // Re-hash the serialized header
     let hashed_header_result = hash_based_on_cs_id(cs_id, &header_bytes);
@@ -177,7 +188,7 @@ pub fn quantum_verify(
 
     // Convert Vec<u8> to SignatureRef for verification
     let signature_ref = sig_algo
-        .signature_from_bytes(&signed_data.get_signature())
+        .signature_from_bytes(signed_data.get_signature())
         .ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -264,7 +275,9 @@ impl CipherSuite for Dilithium2Sha256 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;
+        let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+        })?;
 
         // Re-hash contents for verification
         let contents_hash = signed_data.get_contents();
@@ -364,7 +377,9 @@ impl CipherSuite for Dilithium2Sha512 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;
+        let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+        })?;
 
         // Re hash contents
         let contents_hash = signed_data.get_contents();
@@ -464,7 +479,9 @@ impl CipherSuite for Falcon512Sha256 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;
+        let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+        })?;
 
         // Re hash contents
         let contents_hash = signed_data.get_contents();
@@ -564,7 +581,9 @@ impl CipherSuite for Falcon512Sha512 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;
+        let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+        })?;
 
         // Re hash contents
         let contents_hash = signed_data.get_contents();
@@ -649,7 +668,9 @@ impl CipherSuite for RsaSha256 {
             self.pk.to_pkcs1_der().unwrap().as_ref().to_vec(),
         );
 
-        let serialized_header = serde_json::to_vec(&header)?;
+        let serialized_header = serde_cbor::to_vec(&header).map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+        })?;
 
         // Hash the serialized header
         let hashed_header = self.hash(&serialized_header);
@@ -660,14 +681,16 @@ impl CipherSuite for RsaSha256 {
         let signature = signing_key.sign_with_rng(&mut rng, &hashed_header);
         let signature = signature.to_vec();
 
-        let signed_data = SignedData::new(header, contents, signature);
+        let signed_data = SignedData::new(header, signature, contents);
 
         // Serialize the SignedData
-        let signed_data_str = serde_json::to_string_pretty(&signed_data)?;
+        let signed_data_str = serde_cbor::to_vec(&signed_data).map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+        })?;
 
         // Write serialized SignedData to output file
         let mut out_file = OpenOptions::new().write(true).create(true).open(output)?;
-        out_file.write_all(signed_data_str.as_bytes())?;
+        out_file.write_all(&signed_data_str)?;
 
         Ok(())
     }
@@ -679,13 +702,20 @@ impl CipherSuite for RsaSha256 {
         file.read_to_end(&mut contents)?;
 
         // Deserialize the SignedData
-        let signed_data: SignedData = serde_json::from_slice(&contents)?;
+        let signed_data: SignedData = serde_cbor::from_slice(&contents).map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+        })?;
 
         // Verify message len
         signed_data.verify_message_len();
 
+        // Verify file type
+        signed_data.get_header().verify_file_type();
+
         // Serialize the header to bytes
-        let header_bytes = serde_json::to_vec(&signed_data.get_header())?;
+        let header_bytes = serde_cbor::to_vec(&signed_data.get_header()).map_err(|e| {
+            io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
+        })?;
 
         // Re-hash contents for verification
         let contents_hash = signed_data.get_contents();
