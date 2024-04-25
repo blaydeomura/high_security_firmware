@@ -71,20 +71,6 @@ cargo run remove -n shiv -w .wallet
 ```
 ```
 
-## Non quantum RSA Example signing + verify
-```
-cargo run -- generate -n joe -c 5 -w .wallet
-```
-```
-cargo run sign -n joe -f README.md -o joe_test_sig -w .wallet
-```
-```
-cargo run verify -n joe -f joe_test_sig -w .wallet
-```
-```
-cargo run remove -n joe -w .wallet
-```
-
 ## Testing Core Functionality
 ```
 cargo test --test official_test -- --show-output  
