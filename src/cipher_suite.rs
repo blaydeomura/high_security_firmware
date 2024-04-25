@@ -89,7 +89,7 @@ fn sha512_hash(buffer: &[u8]) -> Vec<u8> {
 // }
 
 // Hashes input data based on the specified cipher suite ID.
-fn hash_based_on_cs_id(cs_id: usize, data: &Vec<u8>) -> io::Result<Vec<u8>> {
+fn hash_based_on_cs_id(cs_id: usize, data: &[u8]) -> io::Result<Vec<u8>> {
     match cs_id {
         1 | 3 | 5 => Ok(sha256_hash(data)),
         2 | 4 => Ok(sha512_hash(data)),
@@ -188,7 +188,7 @@ pub fn quantum_verify(
 
     // Convert Vec<u8> to SignatureRef for verification
     let signature_ref = sig_algo
-        .signature_from_bytes(&signed_data.get_signature())
+        .signature_from_bytes(signed_data.get_signature())
         .ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
