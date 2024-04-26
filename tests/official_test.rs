@@ -39,6 +39,9 @@ const CIPHER_SUITES: [CipherSuite; 5] = [
     },
 ];
 
+// UNIT TESTS 
+// -----------------------------------------------------------------------------------------------------------------------
+
 #[test]
 fn test_generate_new_cipher_suite() {
     for cipher_suite in &CIPHER_SUITES {
@@ -145,3 +148,55 @@ fn test_remove_ciphersuite() {
         );
     }
 }
+// -----------------------------------------------------------------------------------------------------------------------
+// PERFORMANCE TESTS 
+
+fn measure_cipher_suite_performance(cipher_suite: &CipherSuite) -> (usize, usize, usize, u128, u128, u128) {
+    let start_keygen = std::time::Instant::now();
+    let test_cs = create_ciphersuite(format!("cs_{}", cipher_suite.cs_id), cipher_suite.cs_id).unwrap();
+    let end_keygen = start_keygen.elapsed().as_nanos();
+    let keygen_time_ms = end_keygen as u128 / 1_000_000;
+
+    let start_sign = std::time::Instant::now();
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    let test_content = "Test content";
+    file.write_all(test_content.as_bytes()).unwrap();
+    let signed_file = tempfile::NamedTempFile::new().unwrap();
+    test_cs.clone().to_box().sign(file.path().to_str().unwrap(), signed_file.path().to_str().unwrap()).unwrap();
+    let end_sign = start_sign.elapsed().as_nanos();
+    let sign_time_ms = end_sign as u128 / 1_000_000;
+
+    let start_verify = std::time::Instant::now();
+    test_cs.clone().to_box().verify(signed_file.path().to_str().unwrap()).unwrap();
+    let end_verify = start_verify.elapsed().as_nanos();
+    let verify_time_ms = end_verify as u128 / 1_000_000;
+
+    let pk_size = test_cs.to_box().get_pk_bytes().len();
+    let sk_size = match cipher_suite.cs_id {
+        1 | 2 => 2528, // Dilithium2
+        3 | 4 => 1281, // Falcon512
+        5 => 270,      // RSA
+        _ => unreachable!(),
+    };
+
+    (cipher_suite.cs_id, pk_size, sk_size, keygen_time_ms, sign_time_ms, verify_time_ms)
+}
+
+#[test]
+fn test_performance() {
+    println!("Performance Test Results:");
+    println!(
+        "{:<5} | {:<15} | {:<15} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10}",
+        "CS ID", "Signature Algo", "Hash Function", "PK Size", "SK Size", "Keygen (ms)", "Sign (ms)", "Verify (ms)"
+    );
+    println!("{:-<5}-|{:-<15}- |{:-<15}- |{:-<10}- |{:-<10}- |{:-<10}-  |{:-<10}- |{:-<10}", "-", "-", "-", "-", "-", "-", "-", "-");
+
+    for cipher_suite in &CIPHER_SUITES {
+        let (cs_id, pk_size, sk_size, keygen_time_ms, sign_time_ms, verify_time_ms) = measure_cipher_suite_performance(cipher_suite);
+        println!(
+            "{:<5} | {:<15} | {:<15} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10}",
+            cs_id, cipher_suite.signature_algorithm, cipher_suite.hash_function, pk_size, sk_size, keygen_time_ms, sign_time_ms, verify_time_ms
+        );
+    }
+}
+// -----------------------------------------------------------------------------------------------------------------------
