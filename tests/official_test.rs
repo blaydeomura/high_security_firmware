@@ -184,17 +184,18 @@ fn measure_cipher_suite_performance(cipher_suite: &CipherSuite) -> (usize, usize
 
 #[test]
 fn test_performance() {
-    println!("Performance Test Results:");
+    println!("Performance Test Results:/n");
+
     println!(
         "{:<5} | {:<15} | {:<15} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10}",
-        "CS ID", "Signature Algo", "Hash Function", "PK Size", "SK Size", "Keygen (ms)", "Sign (ms)", "Verify (ms)"
+        "ID", "Signature Algo", "Hash Function", "PK Size", "SK Size", "Keygen (ms)", "Sign (ms)", "Verify (ms)"
     );
     println!("{:-<5}-|{:-<15}- |{:-<15}- |{:-<10}- |{:-<10}- |{:-<10}-  |{:-<10}- |{:-<10}", "-", "-", "-", "-", "-", "-", "-", "-");
 
     for cipher_suite in &CIPHER_SUITES {
         let (cs_id, pk_size, sk_size, keygen_time_ms, sign_time_ms, verify_time_ms) = measure_cipher_suite_performance(cipher_suite);
         println!(
-            "{:<5} | {:<15} | {:<15} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10}",
+            "{:<5} | {:<15} | {:<15} | {:<10} | {:<10} | {:<10}  | {:<10} | {:<10}",
             cs_id, cipher_suite.signature_algorithm, cipher_suite.hash_function, pk_size, sk_size, keygen_time_ms, sign_time_ms, verify_time_ms
         );
     }
