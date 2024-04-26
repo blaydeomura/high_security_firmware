@@ -5,12 +5,14 @@ use std::fs::{File};
 use std::io::Write;
 use tempfile::tempdir;
 
+// Struct to represent a cipher suite with its ID, signature algorithm, and hash function
 struct CipherSuite {
     cs_id: usize,
     signature_algorithm: &'static str,
     hash_function: &'static str,
 }
 
+// Constant array containing the supported cipher suites
 const CIPHER_SUITES: [CipherSuite; 5] = [
     CipherSuite {
         cs_id: 1,
@@ -39,9 +41,10 @@ const CIPHER_SUITES: [CipherSuite; 5] = [
     },
 ];
 
-// UNIT TESTS 
+// UNIT TESTS
 // -----------------------------------------------------------------------------------------------------------------------
 
+// Test to verify that a new cipher suite can be generated for each supported algorithm
 #[test]
 fn test_generate_new_cipher_suite() {
     for cipher_suite in &CIPHER_SUITES {
@@ -69,6 +72,7 @@ fn test_generate_new_cipher_suite() {
     }
 }
 
+// Test to verify the sign and verify operations for each cipher suite
 #[test]
 fn test_sign_and_verify() {
     for cipher_suite in &CIPHER_SUITES {
@@ -105,6 +109,7 @@ fn test_sign_and_verify() {
     }
 }
 
+// Test to verify the removal of a cipher suite from the wallet
 #[test]
 fn test_remove_ciphersuite() {
     for cipher_suite in &CIPHER_SUITES {
@@ -148,15 +153,19 @@ fn test_remove_ciphersuite() {
         );
     }
 }
-// -----------------------------------------------------------------------------------------------------------------------
-// PERFORMANCE TESTS 
 
+// -----------------------------------------------------------------------------------------------------------------------
+// PERFORMANCE TESTS
+
+// Function to measure the performance of key generation, signing, and verification for a given cipher suite
 fn measure_cipher_suite_performance(cipher_suite: &CipherSuite) -> (usize, usize, usize, u128, u128, u128) {
+    // Measure the key generation time
     let start_keygen = std::time::Instant::now();
     let test_cs = create_ciphersuite(format!("cs_{}", cipher_suite.cs_id), cipher_suite.cs_id).unwrap();
     let end_keygen = start_keygen.elapsed().as_nanos();
     let keygen_time_ms = end_keygen as u128 / 1_000_000;
 
+    // Measure the sign time
     let start_sign = std::time::Instant::now();
     let mut file = tempfile::NamedTempFile::new().unwrap();
     let test_content = "Test content";
@@ -166,11 +175,13 @@ fn measure_cipher_suite_performance(cipher_suite: &CipherSuite) -> (usize, usize
     let end_sign = start_sign.elapsed().as_nanos();
     let sign_time_ms = end_sign as u128 / 1_000_000;
 
+    // Measure the verify time
     let start_verify = std::time::Instant::now();
     test_cs.clone().to_box().verify(signed_file.path().to_str().unwrap()).unwrap();
     let end_verify = start_verify.elapsed().as_nanos();
     let verify_time_ms = end_verify as u128 / 1_000_000;
 
+    // Get the public key and secret key sizes
     let pk_size = test_cs.to_box().get_pk_bytes().len();
     let sk_size = match cipher_suite.cs_id {
         1 | 2 => 2528, // Dilithium2
@@ -179,23 +190,27 @@ fn measure_cipher_suite_performance(cipher_suite: &CipherSuite) -> (usize, usize
         _ => unreachable!(),
     };
 
+    // Return the measured values as a tuple
     (cipher_suite.cs_id, pk_size, sk_size, keygen_time_ms, sign_time_ms, verify_time_ms)
 }
 
+// Test to measure and print the performance of key generation, signing, and verification for each cipher suite
 #[test]
 fn test_performance() {
-    println!("Performance Test Results:/n");
+    println!("Performance Test Results:\n");
 
+    // Print the table header
     println!(
         "{:<5} | {:<15} | {:<15} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10}",
         "ID", "Signature Algo", "Hash Function", "PK Size", "SK Size", "Keygen (ms)", "Sign (ms)", "Verify (ms)"
     );
-    println!("{:-<5}-|{:-<15}- |{:-<15}- |{:-<10}- |{:-<10}- |{:-<10}-  |{:-<10}- |{:-<10}", "-", "-", "-", "-", "-", "-", "-", "-");
+    println!("{:-<5}-|{:-<15}-|{:-<15}-|{:-<10}-|{:-<10}-|{:-<10}-|{:-<10}-|{:-<10}", "-", "-", "-", "-", "-", "-", "-", "-");
 
+    // Iterate over each cipher suite and measure performance
     for cipher_suite in &CIPHER_SUITES {
         let (cs_id, pk_size, sk_size, keygen_time_ms, sign_time_ms, verify_time_ms) = measure_cipher_suite_performance(cipher_suite);
         println!(
-            "{:<5} | {:<15} | {:<15} | {:<10} | {:<10} | {:<10}  | {:<10} | {:<10}",
+            "{:<5} | {:<15} | {:<15} | {:<10} | {:<10} | {:<10} | {:<10} | {:<10}",
             cs_id, cipher_suite.signature_algorithm, cipher_suite.hash_function, pk_size, sk_size, keygen_time_ms, sign_time_ms, verify_time_ms
         );
     }
