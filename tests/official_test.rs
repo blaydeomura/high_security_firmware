@@ -165,6 +165,7 @@ fn test_remove_ciphersuite() {
         );
     }
 }
+
 // -----------------------------------------------------------------------------------------------------------------------
 // EDGE CASE TESTS
 
@@ -183,6 +184,7 @@ fn test_invalid_cipher_suite_id() {
 fn test_sign_empty_file() {
     // Iterate over each cipher suite in the CIPHER_SUITES array
     for cipher_suite in &CIPHER_SUITES {
+        let mut wallet = Wallet::new();
         let temp_dir = tempdir().unwrap();
         let wallet_path = temp_dir.path().join("test_wallet.wallet");
 
@@ -204,12 +206,11 @@ fn test_sign_empty_file() {
     }
 }
 
-// This test creates a large file (10 MB in this example) and attempts to sign it using each cipher suite. 
-// It ensures that the signing operation succeeds even for large files.
 #[test]
 fn test_sign_large_file() {
     // Iterate over each cipher suite in the CIPHER_SUITES array
     for cipher_suite in &CIPHER_SUITES {
+        let mut wallet = Wallet::new();
         let temp_dir = tempdir().unwrap();
         let wallet_path = temp_dir.path().join("test_wallet.wallet");
 
@@ -232,12 +233,11 @@ fn test_sign_large_file() {
     }
 }
 
-// This test attempts to sign and verify files using invalid file paths for each cipher suite. 
-// It ensures that the sign and verify operations return an error when provided with invalid file paths.
 #[test]
 fn test_invalid_file_paths() {
     // Iterate over each cipher suite in the CIPHER_SUITES array
     for cipher_suite in &CIPHER_SUITES {
+        let mut wallet = Wallet::new();
         let temp_dir = tempdir().unwrap();
         let wallet_path = temp_dir.path().join("test_wallet.wallet");
 
@@ -259,8 +259,6 @@ fn test_invalid_file_paths() {
         assert!(verify_result.is_err(), "Expected an error for an invalid output file path for cipher suite {}", cipher_suite.cs_id);
     }
 }
-
-// -----------------------------------------------------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------------------------------------------------
 // PERFORMANCE TESTS
