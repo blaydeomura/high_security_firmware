@@ -165,6 +165,102 @@ fn test_remove_ciphersuite() {
         );
     }
 }
+// -----------------------------------------------------------------------------------------------------------------------
+// EDGE CASE TESTS
+
+// This test ensures that the create_ciphersuite function handles invalid cipher suite IDs correctly and returns an error.
+#[test]
+fn test_invalid_cipher_suite_id() {
+    // Try to create a cipher suite with an invalid ID (e.g., 0 or 6)
+    let invalid_cs_id = 0;
+    let result = create_ciphersuite(String::from("Invalid"), invalid_cs_id);
+
+    assert!(result.is_err(), "Expected an error for an invalid cipher suite ID");
+}
+
+// This test creates an empty file and attempts to sign it using each cipher suite. It ensures that the signing operation succeeds even for an empty file.
+#[test]
+fn test_sign_empty_file() {
+    // Iterate over each cipher suite in the CIPHER_SUITES array
+    for cipher_suite in &CIPHER_SUITES {
+        let temp_dir = tempdir().unwrap();
+        let wallet_path = temp_dir.path().join("test_wallet.wallet");
+
+        let mut wallet_file = File::create(&wallet_path).unwrap();
+        wallet_file.write_all(b"").unwrap();
+
+        let cs_name = format!("test_cs_{}", cipher_suite.cs_id);
+        let cs = create_ciphersuite(cs_name.clone(), cipher_suite.cs_id).unwrap();
+
+        wallet.save_ciphersuite(cs.clone(), wallet_path.to_str().unwrap()).unwrap();
+
+        let empty_file = temp_dir.path().join("empty_file.txt");
+        File::create(&empty_file).unwrap();
+
+        let signed_file = temp_dir.path().join("signed_empty_file.txt");
+        let result = cs.clone().to_box().sign(empty_file.to_str().unwrap(), signed_file.to_str().unwrap());
+
+        assert!(result.is_ok(), "Failed to sign an empty file for cipher suite {}", cipher_suite.cs_id);
+    }
+}
+
+// This test creates a large file (10 MB in this example) and attempts to sign it using each cipher suite. 
+// It ensures that the signing operation succeeds even for large files.
+#[test]
+fn test_sign_large_file() {
+    // Iterate over each cipher suite in the CIPHER_SUITES array
+    for cipher_suite in &CIPHER_SUITES {
+        let temp_dir = tempdir().unwrap();
+        let wallet_path = temp_dir.path().join("test_wallet.wallet");
+
+        let mut wallet_file = File::create(&wallet_path).unwrap();
+        wallet_file.write_all(b"").unwrap();
+
+        let cs_name = format!("test_cs_{}", cipher_suite.cs_id);
+        let cs = create_ciphersuite(cs_name.clone(), cipher_suite.cs_id).unwrap();
+
+        wallet.save_ciphersuite(cs.clone(), wallet_path.to_str().unwrap()).unwrap();
+
+        let large_file = temp_dir.path().join("large_file.txt");
+        let large_content = vec![b'a'; 10 * 1024 * 1024]; // 10 MB file
+        File::create(&large_file).unwrap().write_all(&large_content).unwrap();
+
+        let signed_file = temp_dir.path().join("signed_large_file.txt");
+        let result = cs.clone().to_box().sign(large_file.to_str().unwrap(), signed_file.to_str().unwrap());
+
+        assert!(result.is_ok(), "Failed to sign a large file for cipher suite {}", cipher_suite.cs_id);
+    }
+}
+
+// This test attempts to sign and verify files using invalid file paths for each cipher suite. 
+// It ensures that the sign and verify operations return an error when provided with invalid file paths.
+#[test]
+fn test_invalid_file_paths() {
+    // Iterate over each cipher suite in the CIPHER_SUITES array
+    for cipher_suite in &CIPHER_SUITES {
+        let temp_dir = tempdir().unwrap();
+        let wallet_path = temp_dir.path().join("test_wallet.wallet");
+
+        let mut wallet_file = File::create(&wallet_path).unwrap();
+        wallet_file.write_all(b"").unwrap();
+
+        let cs_name = format!("test_cs_{}", cipher_suite.cs_id);
+        let cs = create_ciphersuite(cs_name.clone(), cipher_suite.cs_id).unwrap();
+
+        wallet.save_ciphersuite(cs.clone(), wallet_path.to_str().unwrap()).unwrap();
+
+        let invalid_input_path = temp_dir.path().join("invalid_input.txt");
+        let invalid_output_path = temp_dir.path().join("invalid_output.txt");
+
+        let sign_result = cs.clone().to_box().sign(invalid_input_path.to_str().unwrap(), invalid_output_path.to_str().unwrap());
+        let verify_result = cs.to_box().verify(invalid_output_path.to_str().unwrap());
+
+        assert!(sign_result.is_err(), "Expected an error for an invalid input file path for cipher suite {}", cipher_suite.cs_id);
+        assert!(verify_result.is_err(), "Expected an error for an invalid output file path for cipher suite {}", cipher_suite.cs_id);
+    }
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------------------------------------------------
 // PERFORMANCE TESTS
