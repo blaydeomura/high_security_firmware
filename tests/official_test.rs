@@ -208,8 +208,6 @@ fn test_sign_empty_file() {
 
 // This test creates a large file (10 MB in this example) and attempts to sign it using each cipher suite.
 // It ensures that the signing operation succeeds even for large files.
-
-
 #[test]
 fn test_sign_large_file() {
     // Iterate over each cipher suite in the CIPHER_SUITES array
@@ -239,7 +237,6 @@ fn test_sign_large_file() {
 
 // This test attempts to sign and verify files using invalid file paths for each cipher suite. 
 // It ensures that the sign and verify operations return an error when provided with invalid file paths.
-
 #[test]
 fn test_invalid_file_paths() {
     // Iterate over each cipher suite in the CIPHER_SUITES array
@@ -332,4 +329,3 @@ fn test_performance() {
         );
     }
 }
-// -----------------------------------------------------------------------------------------------------------------------
