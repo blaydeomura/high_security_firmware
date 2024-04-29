@@ -2,8 +2,9 @@
 use rust_cli::cipher_suite::{create_ciphersuite, CS};
 use rust_cli::wallet::Wallet;
 use std::fs::{File};
-use std::io::Write;
+use std::io::{Read,Write};
 use tempfile::tempdir;
+use rust_cli::header::{do_vecs_match, SignedData};
 
 // Define a struct to represent a cipher suite with its unique identifier, signature algorithm, and hash function
 struct CipherSuite {
@@ -77,43 +78,52 @@ fn test_generate_new_cipher_suite() {
     }
 }
 
-// Test case to verify the sign and verify operations for each cipher suite
 #[test]
-fn test_sign_and_verify() {
-    // Iterate over each cipher suite in the CIPHER_SUITES array
+fn test_sign_and_verify_with_header() {
     for cipher_suite in &CIPHER_SUITES {
-        let mut wallet = Wallet::new(); // Create a new wallet instance
-        let temp_dir = tempdir().unwrap(); // Create a temporary directory for testing
-        let wallet_path = temp_dir.path().join("test_wallet.wallet"); // Path to the wallet file in the temporary directory
+        let mut wallet = Wallet::new();
+        let temp_dir = tempdir().unwrap();
+        let wallet_path = temp_dir.path().join("test_wallet.wallet");
 
-        // Create the wallet file if it doesn't exist
         let mut wallet_file = File::create(&wallet_path).unwrap();
-        wallet_file.write_all(b"").unwrap(); // Write an empty byte to create the file
+        wallet_file.write_all(b"").unwrap();
 
-        // Generate a new cipher suite instance with a unique name and the current cipher suite's ID
         let cs_name = format!("test_cs_{}", cipher_suite.cs_id);
         let cs = create_ciphersuite(cs_name.clone(), cipher_suite.cs_id).unwrap();
 
-        // Save the new cipher suite to the wallet
         wallet
             .save_ciphersuite(cs.clone(), wallet_path.to_str().unwrap())
             .unwrap();
 
-        // Create a test file in the temporary directory
         let test_file = temp_dir.path().join("test_file.txt");
-        let test_content = "Test content"; // Sample content for testing
+        let test_content = "Test content";
         let mut file = File::create(&test_file).unwrap();
         file.write_all(test_content.as_bytes()).unwrap();
 
-        // Sign the test file using the current cipher suite
         let signed_file = temp_dir.path().join("signed_test_file.txt");
-        cs.clone()
-            .to_box()
-            .sign(test_file.to_str().unwrap(), signed_file.to_str().unwrap())
-            .unwrap();
+        cs.clone().to_box().sign(test_file.to_str().unwrap(), signed_file.to_str().unwrap()).unwrap();
 
-        // Verify the signed file using the current cipher suite
-        cs.to_box().verify(signed_file.to_str().unwrap()).unwrap();
+        let verify_result = cs.clone().to_box().verify(signed_file.to_str().unwrap());
+
+        match verify_result {
+            Ok(_) => {
+                let mut signed_data_bytes = Vec::new();
+                let mut signed_file = File::open(signed_file).unwrap();
+                signed_file.read_to_end(&mut signed_data_bytes).unwrap();
+
+                let signed_data: SignedData = serde_cbor::from_slice(&signed_data_bytes).unwrap();
+                let header = signed_data.get_header();
+
+                assert_eq!(header.get_cs_id(), cipher_suite.cs_id, "Invalid cipher suite ID in the header");
+                assert_eq!(header.get_signer(), &cs.clone().to_box().get_pk_bytes(), "Invalid signer in the header");
+                assert_eq!(header.get_length(), test_content.as_bytes().len(), "Invalid length in the header");
+                assert!(header.verify_file_type(), "Invalid file type in the header");
+                assert!(do_vecs_match(&header.get_hash(), &cs.clone().to_box().hash(test_content.as_bytes())), "Invalid file hash in the header");
+            }
+            Err(e) => {
+                assert!(false, "Verification failed for cipher suite {}: {}", cipher_suite.cs_id, e);
+            }
+        }
     }
 }
 
