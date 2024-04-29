@@ -76,7 +76,7 @@ cargo run remove -n shiv -w .wallet
 
 ## Testing Core Functionality
 ```
-cargo test --test official_test -- --show-output  
+cargo test --test official_tests -- --show-output  
 ``` 
 
 ## Persistence
