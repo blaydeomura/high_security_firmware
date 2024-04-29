@@ -101,7 +101,7 @@ fn hash_based_on_cs_id(cs_id: usize, data: &[u8]) -> io::Result<Vec<u8>> {
 }
 
 // Helper function for verify functions
-fn read_and_deserialize(path: &str) -> io::Result<SignedData> {
+pub fn read_and_deserialize(path: &str) -> io::Result<SignedData> {
     let mut file = File::open(path)?;
     let mut contents = Vec::new();
     file.read_to_end(&mut contents)?;
@@ -266,6 +266,7 @@ impl CipherSuite for Dilithium2Sha256 {
             &self.sk,
         )
     }
+    
     fn verify(&self, input: &str) -> io::Result<()> {
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
 

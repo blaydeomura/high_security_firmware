@@ -69,6 +69,11 @@ fn main() {
                 println!("File verified successfully");
             }
         }
+        Commands::PeerVerify { pk, file } => {
+            let signed_data = cipher_suite::read_and_deserialize(&file)
+                .expect("Unable to deserialize signed data");
+            
+        }
         Commands::Algorithms => {
             commands::print_ids();
         }
