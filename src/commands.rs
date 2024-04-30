@@ -73,11 +73,15 @@ pub enum Commands {
     PeerVerify {
         // Public key of sender
         #[arg(short, long)]
-        pk: Vec<u8>,
+        pk: String,
 
         // Path to signed data file
         #[arg(short, long)]
         file: String,
+    },
+    PrintKeys {
+        #[arg(short, long)]
+        wallet_path: String
     },
     Algorithms,
 }
@@ -99,3 +103,5 @@ pub fn print_ids() {
     println!("| 5   |   RSA                 |   sha256        |");
     println!("|-----------------------------------------------|");
 }
+
+
