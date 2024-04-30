@@ -107,6 +107,11 @@ impl SignedData {
     pub fn get_header(&self) -> &Header {
         &self.header
     }
+
+    // Getter for cs_id
+    pub fn get_cs_id(&self) -> usize {
+        self.header.get_cs_id()
+    }
 }
 
 // Helper function to check if two vectors are equal
