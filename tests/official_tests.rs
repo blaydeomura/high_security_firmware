@@ -304,7 +304,7 @@ fn measure_cipher_suite_performance(cipher_suite: &CipherSuite) -> (usize, usize
     let start_keygen = std::time::Instant::now(); // Start the timer
     let test_cs = create_ciphersuite(format!("cs_{}", cipher_suite.cs_id), cipher_suite.cs_id).unwrap(); // Generate a new cipher suite instance
     let end_keygen = start_keygen.elapsed().as_nanos(); // Stop the timer and calculate the elapsed time in nanoseconds
-    let keygen_time_ns = end_keygen; // Use nanoseconds for better precision
+    let keygen_time = end_keygen; // Use nanoseconds directly
 
     // Clone the cipher suite instance before measuring sign and verify times
     let cs_clone = test_cs.clone();
@@ -316,15 +316,21 @@ fn measure_cipher_suite_performance(cipher_suite: &CipherSuite) -> (usize, usize
 
     let start_sign = std::time::Instant::now(); // Start the timer
     let signed_file = tempfile::NamedTempFile::new().unwrap(); // Create a temporary file to store the signed content
-    cs_clone.clone().to_box().sign(file.path().to_str().unwrap(), signed_file.path().to_str().unwrap()).unwrap(); // Sign the test file
+    {
+        let cloned_cs = cs_clone.clone(); // Clone cs_clone for signing
+        cloned_cs.to_box().sign(file.path().to_str().unwrap(), signed_file.path().to_str().unwrap()).unwrap(); // Sign the test file
+    }
     let end_sign = start_sign.elapsed().as_nanos(); // Stop the timer and calculate the elapsed time in nanoseconds
-    let sign_time_ns = end_sign; // Use nanoseconds for better precision
+    let sign_time = end_sign; // Use nanoseconds directly
 
     // Measure the time taken to verify the signed file using the generated cipher suite instance
     let start_verify = std::time::Instant::now(); // Start the timer
-    cs_clone.clone().to_box().verify(signed_file.path().to_str().unwrap()).unwrap(); // Verify the signed file
+    {
+        let cloned_cs_for_verify = cs_clone.clone(); // Clone cs_clone for verification
+        cloned_cs_for_verify.to_box().verify(signed_file.path().to_str().unwrap()).unwrap(); // Verify the signed file
+    }
     let end_verify = start_verify.elapsed().as_nanos(); // Stop the timer and calculate the elapsed time in nanoseconds
-    let verify_time_ns = end_verify; // Use nanoseconds for better precision
+    let verify_time = end_verify; // Use nanoseconds directly
 
     // Get the public key size and a predefined secret key size based on the cipher suite ID
     let pk_size = test_cs.to_box().get_pk_bytes().len(); // Get the size of the public key in bytes
@@ -336,9 +342,8 @@ fn measure_cipher_suite_performance(cipher_suite: &CipherSuite) -> (usize, usize
     };
 
     // Return the measured values as a tuple
-    (cipher_suite.cs_id, pk_size, sk_size, keygen_time_ns, sign_time_ns, verify_time_ns)
+    (cipher_suite.cs_id, pk_size, sk_size, keygen_time, sign_time, verify_time)
 }
-
 
 // Test case to measure and print the performance of key generation, signing, and verification for each cipher suite
 #[test]
