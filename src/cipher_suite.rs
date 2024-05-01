@@ -4,6 +4,7 @@ use oqs::sig::{self, Algorithm, PublicKey, SecretKey, Sig};
 use pkcs1::DecodeRsaPublicKey;
 use rsa::pkcs1::EncodeRsaPublicKey;
 use rsa::pkcs1v15::SigningKey;
+use rsa::pkcs1v15::VerifyingKey;
 use rsa::sha2::Sha256 as rsa_sha2_Sha256;
 use rsa::signature::{Keypair, RandomizedSigner, SignatureEncoding, Verifier};
 use rsa::RsaPrivateKey;
@@ -15,8 +16,6 @@ use std::{
     fs::{File, OpenOptions},
     io::{self, Read, Write},
 };
-use rsa::pkcs1v15::VerifyingKey;
-
 
 // An interface for a suite of cryptographic algorithms
 // Contains an id, a signature scheme, and a hash function
@@ -215,7 +214,12 @@ pub fn quantum_verify(input: &str, sig_algo: Sig, pk: Vec<u8>, cs_id: usize) -> 
     Ok(())
 }
 
-pub fn quantum_peer_verify(signed_data: SignedData, cs_id: usize, pk: Vec<u8>, sig_algo: Sig) -> io::Result<()> {
+pub fn quantum_peer_verify(
+    signed_data: SignedData,
+    cs_id: usize,
+    pk: Vec<u8>,
+    sig_algo: Sig,
+) -> io::Result<()> {
     // Declare helper function
     let header = signed_data.get_header();
 
@@ -325,7 +329,7 @@ impl CipherSuite for Dilithium2Sha256 {
             &self.sk,
         )
     }
-    
+
     fn verify(&self, input: &str) -> io::Result<()> {
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
 
@@ -347,11 +351,11 @@ impl CipherSuite for Dilithium2Sha256 {
     fn to_enum(&self) -> CS {
         CS::CS1(self.clone())
     }
-    
+
     fn print_pk(&self) {
         println!("{:?}", self.get_pk_bytes())
     }
-    
+
     fn peer_verify(&self, signed_data: SignedData, pk: Vec<u8>, cs_id: usize) -> io::Result<()> {
         let sig_algo = Sig::new(Algorithm::Dilithium2).expect("Failed to create sig object");
 
@@ -750,11 +754,7 @@ impl CipherSuite for RsaSha256 {
                 io::Error::new(io::ErrorKind::Other, format!("Verification failed: {}", e))
             })
     }
-    
 
-
-
-    
     fn get_name(&self) -> &String {
         &self.name
     }
@@ -778,38 +778,35 @@ impl CipherSuite for RsaSha256 {
         println!("{:?}", self.get_pk_bytes())
     }
 
-
-
-
     // pub fn quantum_peer_verify(signed_data: SignedData, cs_id: usize, pk: Vec<u8>, sig_algo: Sig) -> io::Result<()> {
     //     // Declare helper function
     //     let header = signed_data.get_header();
-    
+
     //     // Verify message len
     //     signed_data.verify_message_len();
-    
+
     //     // Verify sender, length of message, and hash of message
     //     header.verify_sender(pk.clone());
-    
+
     //     // Verify hash
     //     header.verify_hash(&hash_based_on_cs_id(cs_id, signed_data.get_contents())?);
-    
+
     //     // Verify file type
     //     header.verify_file_type();
-    
+
     //     // Serialize the header part of the SignedData for hashing
     //     let header_bytes = serde_cbor::to_vec(&signed_data.get_header()).map_err(|e| {
     //         io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
     //     })?;
-    
+
     //     // Re-hash the serialized header
     //     let hashed_header_result = hash_based_on_cs_id(cs_id, &header_bytes);
-    
+
     //     let hashed_header = match hashed_header_result {
     //         Ok(hashed) => hashed,
     //         Err(e) => return Err(e),
     //     };
-    
+
     //     // Convert Vec<u8> to SignatureRef for verification
     //     let signature_ref = sig_algo
     //         .signature_from_bytes(signed_data.get_signature())
@@ -819,10 +816,10 @@ impl CipherSuite for RsaSha256 {
     //                 "Failed to create signature reference",
     //             )
     //         })?;
-    
+
     //     // Need to convert bytes back into public key for verification
     //     let pk = sig_algo.public_key_from_bytes(&pk).unwrap();
-    
+
     //     // Verify the signature using the provided public key and the hash
     //     sig_algo
     //         .verify(&hashed_header, signature_ref, pk)
@@ -832,58 +829,64 @@ impl CipherSuite for RsaSha256 {
     //                 format!("OQS error: Verification failed - {}", e),
     //             )
     //         })?;
-    
+
     //     Ok(())
     // }
-
 
     // TODO: fix this!!!!!
     fn peer_verify(&self, signed_data: SignedData, pk: Vec<u8>, cs_id: usize) -> io::Result<()> {
         // Check if the cs_id matches
         if signed_data.get_header().get_cs_id() != cs_id {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "CS ID does not match"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "CS ID does not match",
+            ));
         }
 
+        // Verify message len
         signed_data.verify_message_len();
 
+        // Verify sender, length of message, and hash of message
         signed_data.get_header().verify_sender(pk.clone());
 
-        signed_data.get_header().verify_hash(&hash_based_on_cs_id(cs_id, signed_data.get_contents())?);
+        // Verify Hash
+        signed_data
+            .get_header()
+            .verify_hash(&hash_based_on_cs_id(cs_id, signed_data.get_contents())?);
 
         // Serialize the header part of the SignedData for hashing
         let header_bytes = serde_cbor::to_vec(&signed_data.get_header()).map_err(|e| {
             io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
         })?;
 
+        // Re-hash the serialized header
         let hashed_header_result = hash_based_on_cs_id(cs_id, &header_bytes);
 
+        // Do a quick check
         let hashed_header = match hashed_header_result {
             Ok(hashed) => hashed,
             Err(e) => return Err(e),
         };
 
         // Load the public key
-        let public_key = RsaPublicKey::from_pkcs1_der(&pk)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, format!("Failed to parse public key: {}", e)))?;
-
-        // Compute the hash of the contents
-        // let computed_hash = self.hash(&signed_data.get_contents());
-
-        // // Check if the computed hash matches the stored hash in the header
-        // if computed_hash != *signed_data.get_header().get_hash() {
-        //     return Err(io::Error::new(io::ErrorKind::InvalidData, "Hash mismatch"));
-        // }
+        let public_key = RsaPublicKey::from_pkcs1_der(&pk).map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("Failed to parse public key: {}", e),
+            )
+        })?;
 
         // Create a verifier with the provided public key
         let verifying_key: VerifyingKey<rsa_sha2_Sha256> = VerifyingKey::new(public_key);
 
+        // Create signature
         let signature = rsa::pkcs1v15::Signature::try_from(signed_data.get_signature().as_slice())
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
 
         // Perform the verification of the signature with the hash
-        // verifying_key.verify(&computed_hash, &signature).expect("Verification failed at verifying key\n");
-        verifying_key.verify(&hashed_header, &signature).expect("Verification failed at verifying key\n");
-
+        verifying_key
+            .verify(&hashed_header, &signature)
+            .expect("Verification failed at verifying key\n");
 
         Ok(())
     }

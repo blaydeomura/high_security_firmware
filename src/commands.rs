@@ -81,7 +81,7 @@ pub enum Commands {
     },
     PrintKeys {
         #[arg(short, long)]
-        wallet_path: String
+        wallet_path: String,
     },
     Algorithms,
 }
@@ -103,5 +103,3 @@ pub fn print_ids() {
     println!("| 5   |   RSA                 |   sha256        |");
     println!("|-----------------------------------------------|");
 }
-
-
