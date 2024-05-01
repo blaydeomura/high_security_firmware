@@ -74,6 +74,16 @@ cargo run remove -n shiv -w .wallet
 ```
 ```
 
+## Print public key
+```
+cargo run print-keys -w .wallet
+```
+
+## Peer Verify
+```
+cargo run peer-verify --pk "<Insert key and inclue enclosing brackets>" --file bob_test_sig 
+```
+
 ## Testing Core Functionality
 ```
 cargo test --test official_test -- --show-output  
