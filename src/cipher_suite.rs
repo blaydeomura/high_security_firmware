@@ -778,62 +778,6 @@ impl CipherSuite for RsaSha256 {
         println!("{:?}", self.get_pk_bytes())
     }
 
-    // pub fn quantum_peer_verify(signed_data: SignedData, cs_id: usize, pk: Vec<u8>, sig_algo: Sig) -> io::Result<()> {
-    //     // Declare helper function
-    //     let header = signed_data.get_header();
-
-    //     // Verify message len
-    //     signed_data.verify_message_len();
-
-    //     // Verify sender, length of message, and hash of message
-    //     header.verify_sender(pk.clone());
-
-    //     // Verify hash
-    //     header.verify_hash(&hash_based_on_cs_id(cs_id, signed_data.get_contents())?);
-
-    //     // Verify file type
-    //     header.verify_file_type();
-
-    //     // Serialize the header part of the SignedData for hashing
-    //     let header_bytes = serde_cbor::to_vec(&signed_data.get_header()).map_err(|e| {
-    //         io::Error::new(io::ErrorKind::Other, format!("Serialization failed: {}", e))
-    //     })?;
-
-    //     // Re-hash the serialized header
-    //     let hashed_header_result = hash_based_on_cs_id(cs_id, &header_bytes);
-
-    //     let hashed_header = match hashed_header_result {
-    //         Ok(hashed) => hashed,
-    //         Err(e) => return Err(e),
-    //     };
-
-    //     // Convert Vec<u8> to SignatureRef for verification
-    //     let signature_ref = sig_algo
-    //         .signature_from_bytes(signed_data.get_signature())
-    //         .ok_or_else(|| {
-    //             io::Error::new(
-    //                 io::ErrorKind::InvalidData,
-    //                 "Failed to create signature reference",
-    //             )
-    //         })?;
-
-    //     // Need to convert bytes back into public key for verification
-    //     let pk = sig_algo.public_key_from_bytes(&pk).unwrap();
-
-    //     // Verify the signature using the provided public key and the hash
-    //     sig_algo
-    //         .verify(&hashed_header, signature_ref, pk)
-    //         .map_err(|e| {
-    //             io::Error::new(
-    //                 io::ErrorKind::Other,
-    //                 format!("OQS error: Verification failed - {}", e),
-    //             )
-    //         })?;
-
-    //     Ok(())
-    // }
-
-    // TODO: fix this!!!!!
     fn peer_verify(&self, signed_data: SignedData, pk: Vec<u8>, cs_id: usize) -> io::Result<()> {
         // Check if the cs_id matches
         if signed_data.get_header().get_cs_id() != cs_id {
