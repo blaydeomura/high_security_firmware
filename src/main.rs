@@ -1,7 +1,7 @@
 use clap::Parser;
-use rust_cli::cipher_suite;
-use rust_cli::commands::{self, Args, Commands};
-use rust_cli::wallet::Wallet;
+use qs_wallet::cipher_suite;
+use qs_wallet::commands::{self, Args, Commands};
+use qs_wallet::wallet::Wallet;
 
 fn main() {
     let args = Args::parse();
@@ -73,7 +73,7 @@ fn main() {
             let signed_data = cipher_suite::read_and_deserialize(&file)
                 .expect("Unable to deserialize signed data");
             let cs_id = signed_data.get_cs_id();
-            let pk = rust_cli::parse_pk_string(&pk);
+            let pk = qs_wallet::parse_pk_string(&pk);
             let verifier = cipher_suite::create_ciphersuite(String::from("placeholder"), cs_id)
                 .expect("Unable to create ciphersuite");
             let result = verifier.to_box().peer_verify(signed_data, pk, cs_id);

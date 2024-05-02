@@ -880,6 +880,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "qs_wallet"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "base64 0.21.7",
+ "bcrypt",
+ "blake2b_simd",
+ "blake2s_simd",
+ "blake3",
+ "clap",
+ "erased-serde",
+ "hex",
+ "json",
+ "md5",
+ "openssl",
+ "oqs",
+ "pkcs1",
+ "rand",
+ "ring",
+ "rsa",
+ "serde",
+ "serde_cbor",
+ "serde_json",
+ "sha2 0.9.9",
+ "tempfile",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -982,35 +1011,6 @@ dependencies = [
  "spki",
  "subtle",
  "zeroize",
-]
-
-[[package]]
-name = "rust_cli"
-version = "0.1.0"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "base64 0.21.7",
- "bcrypt",
- "blake2b_simd",
- "blake2s_simd",
- "blake3",
- "clap",
- "erased-serde",
- "hex",
- "json",
- "md5",
- "openssl",
- "oqs",
- "pkcs1",
- "rand",
- "ring",
- "rsa",
- "serde",
- "serde_cbor",
- "serde_json",
- "sha2 0.9.9",
- "tempfile",
 ]
 
 [[package]]
