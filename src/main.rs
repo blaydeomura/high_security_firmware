@@ -69,6 +69,30 @@ fn main() {
                 println!("File verified successfully");
             }
         }
+        Commands::PeerVerify { pk, file } => {
+            let signed_data = cipher_suite::read_and_deserialize(&file)
+                .expect("Unable to deserialize signed data");
+            let cs_id = signed_data.get_cs_id();
+            let pk = rust_cli::parse_pk_string(&pk);
+            let verifier = cipher_suite::create_ciphersuite(String::from("placeholder"), cs_id)
+                .expect("Unable to create ciphersuite");
+            let result = verifier.to_box().peer_verify(signed_data, pk, cs_id);
+            if let Err(e) = result {
+                println!("Verification error: {}", e);
+            } else {
+                println!("File verified successfully");
+            }
+        }
+        Commands::PrintKeys { wallet_path } => {
+            wallet
+                .load_wallet(&wallet_path)
+                .expect("Unable to load wallet");
+            for (name, person) in wallet.keys.into_iter() {
+                let person = person.to_box();
+                println!("Name: {} CS_ID: {}", name, person.get_cs_id());
+                person.print_pk();
+            }
+        }
         Commands::Algorithms => {
             commands::print_ids();
         }

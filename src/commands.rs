@@ -70,6 +70,19 @@ pub enum Commands {
         #[arg(short, long)]
         wallet_path: String,
     },
+    PeerVerify {
+        // Public key of sender
+        #[arg(short, long)]
+        pk: String,
+
+        // Path to signed data file
+        #[arg(short, long)]
+        file: String,
+    },
+    PrintKeys {
+        #[arg(short, long)]
+        wallet_path: String,
+    },
     Algorithms,
 }
 
