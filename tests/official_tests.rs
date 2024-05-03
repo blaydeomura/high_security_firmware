@@ -1,10 +1,10 @@
 // Import necessary modules for file operations, creating temporary directories, and working with cipher suites and wallets
-use rust_cli::cipher_suite::{create_ciphersuite, CS};
-use rust_cli::wallet::Wallet;
+use qs_wallet::cipher_suite::{create_ciphersuite, CS};
+use qs_wallet::wallet::Wallet;
 use std::fs::{File};
 use std::io::{Read,Write};
 use tempfile::tempdir;
-use rust_cli::header::{do_vecs_match, SignedData};
+use qs_wallet::header::{do_vecs_match, SignedData};
 
 // Define a struct to represent a cipher suite with its unique identifier, signature algorithm, and hash function
 struct CipherSuite {
