@@ -8,6 +8,7 @@
 - Remove: Remove an existing key pair from the wallet.
 - Sign: Signs a file with a secret key.
 - Verify: Verifies a file using public key and signature provided.
+- Peer-to-Peer verify: Verify a signed file from a different machine
 
 
 ## Usage
