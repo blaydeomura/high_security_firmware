@@ -86,7 +86,7 @@ cargo run peer-verify --pk "<Insert key and inclue enclosing brackets>" --file b
 
 ## Testing Core Functionality
 ```
-cargo test --test official_test -- --show-output  
+cargo test --test official_tests -- --show-output  
 ``` 
 
 ## Persistence
