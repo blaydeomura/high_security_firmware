@@ -17,12 +17,12 @@ The program uses the Clap library for parsing command-line arguments. All subcom
 
 * View combination of algorithms in each cipher suite
 ```
-./qs_wallet -- algorithms
+./qs_wallet algorithms
 ```
 
 * Generate a new ciphersuite with the specified algorithms
 ```
-./qs_wallet -- generate -n <name> -c <cs id> -w .wallet
+./qs_wallet generate -n <name> -c <cs id> -w .wallet
 ```
 
 * Sign a file using the specified persona
@@ -41,16 +41,13 @@ The program uses the Clap library for parsing command-line arguments. All subcom
 ./qs_wallet remove -n <name> -w .wallet
 ```
 
-# To Build and Run an Executable
+## To Build and Run an Executable
 ```
 cargo build --release
 ```
-
-* Copy the path to executable 
+* Copy the path to executable and place in a target directory
     * cp <src executable path> <destination directory for executable>
-
-
-* Note: You will want to remove your signed output file as well if you remove the corresponding name from wallet
+* From here, you can run the commands below
 
 ## Quantum Example
 ```
@@ -67,6 +64,8 @@ cargo build --release
 ./qs_wallet sign -n alice -f src/commands.rs -o alice_test_sig -w .wallet
 ./qs_wallet sign -n shiv -f src/header.rs -o shiv_test_sig -w .wallet
 ```
+* Note that your files can be anywhere, but you must specify the path location 
+
 ```
 ./qs_wallet verify -n bob -f bob_test_sig -w .wallet
 ./qs_wallet verify -n mallory -f mallory_test_sig -w .wallet
@@ -81,6 +80,7 @@ cargo build --release
 ./qs_wallet remove -n alice -w .wallet
 ./qs_wallet remove -n shiv -w .wallet
 ```
+* Note: You will want to remove your signed output file as well if you remove the corresponding name from wallet
 
 # How to Peer-to-Peer Verify
 ## Print public key (on machine that signed the file)
