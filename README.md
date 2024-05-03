@@ -1,9 +1,7 @@
-# Shared repo for High Security Firmware
-
 # Encrypted Wallet Manager
 
 ## Overview
-- This Rust program is a command-line tool for managing a wallet of ciphersuite objects. A ciphersuite object consists of a name and a key pair generated using quantum safe algorithms. Users can generate and remove ciphersuites as well as sign and verify files using the key pairs stored.
+- This Rust program is a command-line tool for managing a wallet of ciphersuite objects. A ciphersuite object consists of a name and a key pair generated using quantum and or non-quantum safe algorithms. Users can generate and remove ciphersuites as well as sign and verify files using the key pairs stored.
 
 ## Features
 - Generate: Generate a new key pair using the specified algorithm.
@@ -46,7 +44,9 @@ The program uses the Clap library for parsing command-line arguments. All subcom
 cargo build --release
 ```
 * Copy the path to executable and place in a target directory
-    * cp <src executable path> <destination directory for executable>
+```
+cp <src executable path> <destination directory for executable>
+```
 * From here, you can run the commands below
 
 ## Quantum Example
