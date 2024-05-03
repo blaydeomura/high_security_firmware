@@ -82,7 +82,8 @@ cargo build --release
 ./qs_wallet remove -n shiv -w .wallet
 ```
 
-## Print public key
+# How to Peer-to-Peer Verify
+## Print public key (on machine that signed the file)
 ```
 ./qs_wallet print-keys -w .wallet
 ```
@@ -90,9 +91,10 @@ cargo build --release
 * If you need to verify on a different machine, send the copied public key via email or another way
 * On the other machine, run the command below with the sent public key...
 
-## Peer Verify
+## Peer Verify (on second machine)
+* Note: must the both the copied public key string + signed file to verify
 ```
-./qs_wallet peer-verify --pk "<Insert key and inclue enclosing brackets>" --file bob_test_sig 
+./qs_wallet peer-verify --pk "<Insert key and inclue enclosing brackets>" --file <file to verify>
 ```
 
 # Testing Core Functionality
