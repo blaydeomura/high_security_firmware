@@ -85,13 +85,6 @@ fn sha512_hash(buffer: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-// Blake3 hash function
-// fn blake3_hash(buffer: &[u8]) -> Vec<u8> {
-//     let mut hasher = blake3::Hasher::new();
-//     hasher.update(buffer);
-//     hasher.finalize().to_vec()
-// }
-
 // Hashes input data based on the specified cipher suite ID.
 fn hash_based_on_cs_id(cs_id: usize, data: &[u8]) -> io::Result<Vec<u8>> {
     match cs_id {
