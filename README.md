@@ -74,6 +74,7 @@ cargo run remove -n shiv -w .wallet
 ```
 ```
 
+```
 ## Print public key
 ```
 cargo run print-keys -w .wallet
