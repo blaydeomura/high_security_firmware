@@ -24,7 +24,7 @@ The program uses the Clap library for parsing command-line arguments. All subcom
 ./qs_wallet generate -n <name> -c <cs id> -w .wallet
 ```
 
-* Sign a file using the specified persona
+* Sign a file using the specified cipher suite object
 ```
 ./qs_wallet sign -n <name of signer> -f <file to sign> -o <signed file output name> -w .wallet
 ```
@@ -35,7 +35,7 @@ The program uses the Clap library for parsing command-line arguments. All subcom
 ./qs_wallet verify -n <name of signer> -f <signed data file> -w .wallet
 ```
 
-* Remove a persona from wallet
+* Remove a cipher suite object from wallet
 ```
 ./qs_wallet remove -n <name> -w .wallet
 ```
@@ -46,8 +46,9 @@ cargo build --release
 ```
 * Copy the path to executable and place in a target directory
 ```
-cp <src executable path> <destination directory for executable>
+cp <src executable path>/qs_wallet <destination directory for executable>
 ```
+
 * From here, you can run the commands below
 
 ## Quantum Example
@@ -100,8 +101,9 @@ cp <src executable path> <destination directory for executable>
 
 # Testing Core Functionality
 ```
-./qs_wallet --test official_tests -- --show-output  
+cargo test --test official_tests -- --show-output  
 ``` 
+* Note that this cannot be run in executable but rather via using cargo
 
 # Persistence
-- Persona data is stored in a .wallet file in cbor (concise binary) format. 
+- Cipher suite object data is stored in a .wallet file in cbor (concise binary) format. 
