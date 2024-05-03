@@ -17,78 +17,93 @@ The program uses the Clap library for parsing command-line arguments. All subcom
 
 * View combination of algorithms in each cipher suite
 ```
-cargo run -- algorithms
+./qs_wallet -- algorithms
 ```
 
 * Generate a new ciphersuite with the specified algorithms
 ```
-cargo run -- generate -n <name> --c <cs id> -w .wallet
+./qs_wallet -- generate -n <name> -c <cs id> -w .wallet
 ```
 
 * Sign a file using the specified persona
 ```
-cargo run sign -n <name of signer> -f <file to sign> -o <signed file output name> -w .wallet
+./qs_wallet sign -n <name of signer> -f <file to sign> -o <signed file output name> -w .wallet
 ```
 
 * Verify a file based on signer and header file
 ```
-cargo run verify -n bob -f bob_test_sig -w .wallet
-cargo run verify -n <name of signer> -f <signed data file> -w .wallet
+./qs_wallet verify -n bob -f bob_test_sig -w .wallet
+./qs_wallet verify -n <name of signer> -f <signed data file> -w .wallet
 ```
 
 * Remove a persona from wallet
 ```
-cargo run remove -n <name> -w .wallet
+./qs_wallet remove -n <name> -w .wallet
 ```
+
+# To Build and Run an Executable
+```
+cargo build --release
+```
+
+* Copy the path to executable 
+    * cp <src executable path> <destination directory for executable>
+
 
 * Note: You will want to remove your signed output file as well if you remove the corresponding name from wallet
 
 ## Quantum Example
 ```
-cargo run -- generate -n bob -c 1 -w .wallet
-cargo run -- generate -n mallory -c 2 -w .wallet
-cargo run -- generate -n dude -c 3 -w .wallet
-cargo run -- generate -n alice -c 4 -w .wallet
-cargo run -- generate -n shiv -c 5 -w .wallet
+./qs_wallet generate -n bob -c 1 -w .wallet
+./qs_wallet generate -n mallory -c 2 -w .wallet
+./qs_wallet generate -n dude -c 3 -w .wallet
+./qs_wallet generate -n alice -c 4 -w .wallet
+./qs_wallet generate -n shiv -c 5 -w .wallet
 ```
 ```
-cargo run sign -n bob -f README.md -o bob_test_sig -w .wallet
-cargo run sign -n mallory -f README.md -o mallory_test_sig -w .wallet
-cargo run sign -n dude -f README.md -o dude_test_sig -w .wallet
-cargo run sign -n alice -f README.md -o alice_test_sig -w .wallet
-cargo run sign -n shiv -f README.md -o shiv_test_sig -w .wallet
+./qs_wallet sign -n bob -f README.md -o bob_test_sig -w .wallet
+./qs_wallet sign -n mallory -f Cargo.lock -o mallory_test_sig -w .wallet
+./qs_wallet sign -n dude -f Cargo.toml -o dude_test_sig -w .wallet
+./qs_wallet sign -n alice -f src/commands.rs -o alice_test_sig -w .wallet
+./qs_wallet sign -n shiv -f src/header.rs -o shiv_test_sig -w .wallet
 ```
 ```
-cargo run verify -n bob -f bob_test_sig -w .wallet
-cargo run verify -n mallory -f mallory_test_sig -w .wallet
-cargo run verify -n dude -f dude_test_sig -w .wallet
-cargo run verify -n alice -f alice_test_sig -w .wallet
-cargo run verify -n shiv -f shiv_test_sig -w .wallet
+./qs_wallet verify -n bob -f bob_test_sig -w .wallet
+./qs_wallet verify -n mallory -f mallory_test_sig -w .wallet
+./qs_wallet verify -n dude -f dude_test_sig -w .wallet
+./qs_wallet verify -n alice -f alice_test_sig -w .wallet
+./qs_wallet verify -n shiv -f shiv_test_sig -w .wallet
 ```
 ```
-cargo run remove -n bob -w .wallet
-cargo run remove -n mallory -w .wallet
-cargo run remove -n dude -w .wallet
-cargo run remove -n alice -w .wallet
-cargo run remove -n shiv -w .wallet
+./qs_wallet remove -n bob -w .wallet
+./qs_wallet remove -n mallory -w .wallet
+./qs_wallet remove -n dude -w .wallet
+./qs_wallet remove -n alice -w .wallet
+./qs_wallet remove -n shiv -w .wallet
 ```
 ```
 
+```
+# How to Peer-to-Peer Verify
+```
 ```
 ## Print public key
 ```
-cargo run print-keys -w .wallet
+./qs_wallet print-keys -w .wallet
 ```
+* Copy the numbers including the brackets ie "[12 23 45 ... example key numbers here]"
+* If you need to verify on a different machine, send the copied public key via email or another way
+* On the other machine, run the command below with the sent public key...
 
 ## Peer Verify
 ```
-cargo run peer-verify --pk "<Insert key and inclue enclosing brackets>" --file bob_test_sig 
+./qs_wallet peer-verify --pk "<Insert key and inclue enclosing brackets>" --file bob_test_sig 
 ```
 
-## Testing Core Functionality
+# Testing Core Functionality
 ```
-cargo test --test official_tests -- --show-output  
+./qs_wallet --test official_tests -- --show-output  
 ``` 
 
-## Persistence
-- Persona data is stored in wallet directory in json format. 
+# Persistence
+- Persona data is stored in a .wallet file in cbor (concise binary) format. 
