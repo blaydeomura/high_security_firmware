@@ -81,12 +81,7 @@ cargo build --release
 ./qs_wallet remove -n alice -w .wallet
 ./qs_wallet remove -n shiv -w .wallet
 ```
-```
 
-```
-# How to Peer-to-Peer Verify
-```
-```
 ## Print public key
 ```
 ./qs_wallet print-keys -w .wallet
