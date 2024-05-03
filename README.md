@@ -1,7 +1,7 @@
 # Encrypted Wallet Manager
 
 ## Overview
-- This Rust program is a command-line tool for managing a wallet of ciphersuite objects. A ciphersuite object consists of a name and a key pair generated using quantum and or non-quantum safe algorithms. Users can generate and remove ciphersuites as well as sign and verify files using the key pairs stored.
+- This Rust program is a command-line tool for managing a wallet of ciphersuite objects. A ciphersuite object consists of a name and a key pair generated using quantum and or eliptic curve algorithms. Users can generate and remove ciphersuites as well as sign and verify files using the key pairs stored.
 
 ## Features
 - Generate: Generate a new key pair using the specified algorithm.
@@ -26,13 +26,12 @@ The program uses the Clap library for parsing command-line arguments. All subcom
 
 * Sign a file using the specified cipher suite object
 ```
-./qs_wallet sign -n <name of signer> -f <file to sign> -o <signed file output name> -w .wallet
+./qs_wallet sign -n <name> -f <file to sign> -o <signed file output name> -w .wallet
 ```
 
 * Verify a file based on signer and header file
 ```
-./qs_wallet verify -n bob -f bob_test_sig -w .wallet
-./qs_wallet verify -n <name of signer> -f <signed data file> -w .wallet
+./qs_wallet verify -n <name> -f <signed data file> -w .wallet
 ```
 
 * Remove a cipher suite object from wallet
@@ -96,7 +95,7 @@ cp <src executable path>/qs_wallet <destination directory for executable>
 ## Peer Verify (on second machine)
 * Note: must the both the copied public key string + signed file to verify
 ```
-./qs_wallet peer-verify --pk "<Insert key and inclue enclosing brackets>" --file <file to verify>
+./qs_wallet peer-verify --pk "<Insert key and include enclosing brackets>" --file <file to verify>
 ```
 
 # Testing Core Functionality
