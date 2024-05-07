@@ -113,10 +113,24 @@ cp <src executable path>/qs_wallet <destination directory for executable>
 ```
 
 # Testing Core Functionality
-```
+The program includes a comprehensive test suite to validate its core functionality. The tests cover various scenarios, including:
+
+- Generating new cipher suites for each supported algorithm
+- Signing and verifying files using the Header and SignedData structs for each cipher suite
+- Removing cipher suites from the wallet
+- Handling invalid cipher suite IDs
+- Signing empty files
+- Signing large files (10 MB)
+- Handling invalid file paths during signing and verification
+
+To run the tests, use the following command:
 cargo test --test official_tests -- --show-output  
 ``` 
-* Note that this cannot be run in executable but rather via using cargo
+Note that this cannot be run in the executable but rather via using cargo
+``` 
+The tests will generate temporary files and wallets for testing purposes. They will ensure that the program behaves as expected in different scenarios, including edge cases and error handling.
+
+In addition to the core functionality tests, the program also includes a performance test. This test measures the key generation, signing, and verification times for each supported cipher suite. It prints a table with the performance results, including the cipher suite ID, signature algorithm, hash function, public key size, secret key size, and the measured times in microseconds.
 
 # Persistence
 - Cipher suite object data is stored in a .wallet file in cbor (concise binary) format. 
