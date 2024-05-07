@@ -3,6 +3,14 @@
 ## Overview
 - This Rust program is a command-line tool for managing a wallet of ciphersuite objects. A ciphersuite object consists of a name and a key pair generated using quantum and or eliptic curve algorithms. Users can generate and remove ciphersuites as well as sign and verify files using the key pairs stored.
 
+## Problem Statement
+- According to Microsoft and Google, 70% of security vulnerabilities are due to memory safety issues. Micron currently writes a large amount of their code in C, which is not a memory safe language. In order to stay up to date with current security practices, it is important to develop software that is both performant and memory safe.
+Cryptographic algorithms are integral to the security of our communications today. The algorithms that are currently in use are only secure as long as quantum computers do not exist. The NIST predicts that current algorithms could be broken as soon as 2030, so it is important to transition to using quantum safe cryptography for our communications.
+
+## Solution
+- By writing the code base entirely in Rust, we accomplish the goals of both memory safety and high performance. Many languages offer memory safety, but lack in speed and performance compared to C. Due to the compiler and the borrow checker, Rust is able to be memory safe by default without sacrificing any of the speed that is imperative for high performance applications.
+In order to make our tool future proof, we used quantum safe algorithms for key generation, signing, and verification. Over the past few years, the NIST has been soliciting proposals to determine a standard for quantum safe cryptographic algorithms. In 2022, Dilithium and Falcon were two of the algorithms selected. We used the Open Quantum Safe implementation of these algorithms to ensure our CLI tool is up to date with the current security standards.
+
 ## Features
 - Generate: Generate a new key pair using the specified algorithm.
 - Remove: Remove an existing key pair from the wallet.
@@ -50,7 +58,7 @@ cp <src executable path>/qs_wallet <destination directory for executable>
 
 * From here, you can run the commands below
 
-## Quantum Example
+## Example
 ```
 ./qs_wallet generate -n bob -c 1 -w .wallet
 ./qs_wallet generate -n mallory -c 2 -w .wallet
@@ -58,6 +66,8 @@ cp <src executable path>/qs_wallet <destination directory for executable>
 ./qs_wallet generate -n alice -c 4 -w .wallet
 ./qs_wallet generate -n shiv -c 5 -w .wallet
 ```
+* You will expect the output "Ciphersuite generated successfully"
+
 ```
 ./qs_wallet sign -n bob -f README.md -o bob_test_sig -w .wallet
 ./qs_wallet sign -n mallory -f Cargo.lock -o mallory_test_sig -w .wallet
@@ -65,6 +75,7 @@ cp <src executable path>/qs_wallet <destination directory for executable>
 ./qs_wallet sign -n alice -f src/commands.rs -o alice_test_sig -w .wallet
 ./qs_wallet sign -n shiv -f src/header.rs -o shiv_test_sig -w .wallet
 ```
+* You will expect the output "Ciphersuite signed successfully"
 * Note that your files can be anywhere, but you must specify the path location 
 
 ```
@@ -74,6 +85,8 @@ cp <src executable path>/qs_wallet <destination directory for executable>
 ./qs_wallet verify -n alice -f alice_test_sig -w .wallet
 ./qs_wallet verify -n shiv -f shiv_test_sig -w .wallet
 ```
+* You will expect the output "Ciphersuite verified successfully"
+
 ```
 ./qs_wallet remove -n bob -w .wallet
 ./qs_wallet remove -n mallory -w .wallet
@@ -81,6 +94,7 @@ cp <src executable path>/qs_wallet <destination directory for executable>
 ./qs_wallet remove -n alice -w .wallet
 ./qs_wallet remove -n shiv -w .wallet
 ```
+* You will expect the output "Ciphersuite removed successfully"
 * Note: You will want to remove your signed output file as well if you remove the corresponding name from wallet
 
 # How to Peer-to-Peer Verify
